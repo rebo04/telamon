@@ -966,35 +966,6 @@ body.role-papoi .papoi-only { display: inline-flex !important; }
   <!-- PART NUMBERS DINÁMICOS -->
   <div id="partnums-blocks"></div>
 
-  <!-- FALLA GLOBAL -->
-  <div class="section">
-    <div class="section-head">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <span>Resultados Generales</span>
-    </div>
-    <div class="section-body">
-      <div class="field" style="margin-bottom:14px;">
-        <label>Fallas Detectadas</label>
-        <div class="test-checks" id="failure-list"></div>
-      </div>
-      <div class="field" id="other-failure-container" style="display:none; margin-bottom:14px;">
-        <label>Especificar Otra Falla</label>
-        <textarea id="f-fail-other" placeholder="Describe la falla especial..."></textarea>
-      </div>
-
-      <!-- TIPO DE DEFECTO SEGMENTADO -->
-      <div class="field" style="margin-bottom:14px;">
-        <label>Tipo de Defecto</label>
-        <div id="defect-type-container"></div>
-      </div>
-
-      <div class="field">
-        <label>Solución Implementada</label>
-        <textarea id="f-solution" placeholder="Describe la solución…&#10;(o N/A)"></textarea>
-      </div>
-    </div>
-  </div>
-
   <!-- ADD PART NUMBER (al final) -->
   <div style="margin-bottom:16px;">
     <button class="btn-icon" onclick="addPartBlock()" style="width:100%;justify-content:center;border-style:dashed;color:var(--accent2);border-color:var(--accent2);">
@@ -1209,9 +1180,7 @@ function init() {
     now.toLocaleDateString('es-MX', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
   document.getElementById('f-date').value = now.toISOString().split('T')[0];
   loadRecords();
-  addPartBlock(); // start with one block
-  renderFailures();
-  renderDefects();
+  addPartBlock(); // start with one block (incluye fallas/defectos/solución)
 }
 
 // ── PART BLOCK ──
@@ -1220,7 +1189,10 @@ function makeEmptyBlock() {
   COMPONENTS.forEach(c => { comp[c] = { yes: false, no: false, subtypes: [] }; });
   const test = {};
   TESTS.forEach(t => { test[t] = false; });
-  return { partnum: '', compState: comp, testState: test };
+  const fail = {};
+  [...FAILURES, 'Otro'].forEach(f => { fail[f] = false; });
+  const defect = {};
+  return { partnum: '', compState: comp, testState: test, failState: fail, defectState: defect, otherFail: '', solution: '' };
 }
 
 function addPartBlock() {
@@ -1266,11 +1238,81 @@ function renderAllBlocks() {
         <div id="comp-list-${idx}"></div>
         <div style="margin-top:14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:10px;">Pruebas Realizadas</div>
         <div class="test-checks" id="test-list-${idx}"></div>
+
+        <div style="margin-top:18px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:10px;">Fallas Detectadas</div>
+        <div class="test-checks" id="fail-list-${idx}"></div>
+        <div class="field" id="other-fail-wrap-${idx}" style="display:${block.failState && block.failState['Otro'] ? 'block':'none'};margin-top:10px;">
+          <label>Especificar Otra Falla</label>
+          <textarea id="other-fail-${idx}" placeholder="Describe la falla especial..." oninput="partBlocks[${idx}].otherFail=this.value">${block.otherFail||''}</textarea>
+        </div>
+
+        <div style="margin-top:18px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:10px;">Tipo de Defecto</div>
+        <div id="defect-list-${idx}"></div>
+
+        <div class="field" style="margin-top:18px;">
+          <label>Solución Implementada</label>
+          <textarea id="solution-${idx}" placeholder="Describe la solución…&#10;(o N/A)" oninput="partBlocks[${idx}].solution=this.value">${block.solution||''}</textarea>
+        </div>
       </div>
     `;
     container.appendChild(wrap);
     renderBlockComponents(idx);
     renderBlockTests(idx);
+    renderBlockFails(idx);
+    renderBlockDefects(idx);
+  });
+}
+
+function renderBlockFails(idx) {
+  const el = document.getElementById('fail-list-' + idx);
+  if (!el) return;
+  el.innerHTML = '';
+  const block = partBlocks[idx];
+  if (!block.failState) { block.failState = {}; [...FAILURES,'Otro'].forEach(f=>block.failState[f]=false); }
+  [...FAILURES, 'Otro'].forEach(f => {
+    const item = document.createElement('div');
+    item.className = 'check-item ' + (block.failState[f] ? 'active' : '');
+    item.onclick = () => {
+      block.failState[f] = !block.failState[f];
+      if (f === 'Otro') {
+        const w = document.getElementById('other-fail-wrap-' + idx);
+        if (w) w.style.display = block.failState[f] ? 'block' : 'none';
+      }
+      renderBlockFails(idx);
+    };
+    item.innerHTML = '<div class="check-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><span class="check-label" style="font-size:13px;">' + f + '</span>';
+    el.appendChild(item);
+  });
+}
+
+function renderBlockDefects(idx) {
+  const cont = document.getElementById('defect-list-' + idx);
+  if (!cont) return;
+  const block = partBlocks[idx];
+  if (!block.defectState) block.defectState = {};
+  cont.innerHTML = '';
+  DEFECT_CATEGORIES.forEach(cat => {
+    const isDet = cat.includes('Detección');
+    const cls = isDet ? 'det' : 'op';
+    const subs = DEFECT_TYPES[cat];
+    const activeCount = subs.filter(s => block.defectState[s]).length;
+    const catDiv = document.createElement('div');
+    catDiv.className = 'defect-cat';
+    const head = document.createElement('div');
+    head.className = 'defect-cat-head ' + cls;
+    head.innerHTML = '<span class="dot"></span>' + cat + '<span class="count">' + activeCount + '</span>';
+    catDiv.appendChild(head);
+    const subsDiv = document.createElement('div');
+    subsDiv.className = 'defect-subs';
+    subs.forEach(s => {
+      const chip = document.createElement('span');
+      chip.className = 'defect-sub ' + cls + (block.defectState[s] ? ' active' : '');
+      chip.textContent = s;
+      chip.onclick = () => { block.defectState[s] = !block.defectState[s]; renderBlockDefects(idx); };
+      subsDiv.appendChild(chip);
+    });
+    catDiv.appendChild(subsDiv);
+    cont.appendChild(catDiv);
   });
 }
 
@@ -1433,19 +1475,6 @@ function submitForm() {
     client = document.getElementById('f-client-other').value.trim() || 'Otro';
   }
   const tester    = document.getElementById('f-tester').value.trim();
-  
-  let fail = Object.keys(selectedFailures).filter(k => selectedFailures[k] && k !== 'Otro').join(', ');
-  if (selectedFailures['Otro']) {
-    const otherFail = document.getElementById('f-fail-other').value.trim();
-    if (otherFail) {
-      fail += (fail ? ', ' : '') + 'Otro: ' + otherFail;
-    } else {
-      fail += (fail ? ', ' : '') + 'Otro';
-    }
-  }
-  if (!fail) fail = 'N/A';
-
-  const solution  = document.getElementById('f-solution').value.trim();
   const inspector = document.getElementById('f-inspector').value.trim();
 
   // Sync partnum inputs (oninput already syncs, but safety check)
@@ -1480,23 +1509,54 @@ function submitForm() {
     }
   }
 
-  const isSolved = (fail !== 'N/A' && solution !== '' && solution.toLowerCase() !== 'n/a');
+  // Helper to compute fail string for a block
+  function blockFailStr(b) {
+    const fs = b.failState || {};
+    let f = Object.keys(fs).filter(k => fs[k] && k !== 'Otro').join(', ');
+    if (fs['Otro']) {
+      const ov = (b.otherFail||'').trim();
+      f += (f ? ', ' : '') + (ov ? 'Otro: ' + ov : 'Otro');
+    }
+    return f || 'N/A';
+  }
 
-  const defectBreakdown = getDefectBreakdown(selectedDefects);
+  // Build per-part data including fail/defect/solution
+  const partsData = validBlocks.map(b => {
+    const bFail = blockFailStr(b);
+    const bd = getDefectBreakdown(b.defectState);
+    return {
+      partnum: b.partnum,
+      components: JSON.parse(JSON.stringify(b.compState)),
+      tests: JSON.parse(JSON.stringify(b.testState)),
+      fail: bFail,
+      solution: (b.solution||'').trim(),
+      defects: JSON.parse(JSON.stringify(b.defectState||{})),
+      defectDetection: bd.detection,
+      defectOperator: bd.operator
+    };
+  });
+
+  // Aggregate for record-level summary (combine all blocks)
+  const allFails = partsData.map(p => p.fail).filter(f => f && f !== 'N/A');
+  const fail = allFails.length > 0 ? [...new Set(allFails)].join(' | ') : 'N/A';
+  const allSolutions = partsData.map(p => p.solution).filter(s => s && s.toLowerCase() !== 'n/a' && s !== '');
+  const solution = allSolutions.length > 0 ? [...new Set(allSolutions)].join(' | ') : 'N/A';
+  const allDet = [...new Set(partsData.flatMap(p => p.defectDetection))];
+  const allOp  = [...new Set(partsData.flatMap(p => p.defectOperator))];
+  const combinedDefects = {};
+  partsData.forEach(p => { Object.keys(p.defects).forEach(k => { if(p.defects[k]) combinedDefects[k] = true; }); });
+
+  const isSolved = (fail !== 'N/A' && allSolutions.length >= allFails.length && allFails.length > 0);
 
   const record = {
     id: Date.now(),
     cell, date, slot, client, tester, fail, solution, inspector,
     solved: isSolved,
-    defects: JSON.parse(JSON.stringify(selectedDefects)),
-    defectDetection: defectBreakdown.detection,
-    defectOperator: defectBreakdown.operator,
+    defects: combinedDefects,
+    defectDetection: allDet,
+    defectOperator: allOp,
     partnum: validBlocks.map(b => b.partnum).join(' / '),
-    parts: validBlocks.map(b => ({
-      partnum: b.partnum,
-      components: JSON.parse(JSON.stringify(b.compState)),
-      tests: JSON.parse(JSON.stringify(b.testState))
-    })),
+    parts: partsData,
     ts: new Date().toISOString(),
     changeHistory: [
       {
@@ -2209,11 +2269,19 @@ function renderHistory() {
         return `<span class="comp-tag ${cls}">${c.split('/')[0].trim()}: ${lbl}</span>`;
       }).join('');
       const activTests = TESTS.filter(t => p.tests && p.tests[t]).join(', ') || '—';
+      const pFail = p.fail || '—';
+      const pSol = p.solution || '—';
+      const pDet = (p.defectDetection && p.defectDetection.length>0) ? p.defectDetection.join(', ') : '';
+      const pOp  = (p.defectOperator && p.defectOperator.length>0) ? p.defectOperator.join(', ') : '';
       return `
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;">
           <div style="font-size:12px;font-weight:700;color:var(--accent2);font-family:var(--mono);margin-bottom:8px;">${p.partnum}</div>
           <div class="comp-summary" style="margin-bottom:8px;">${compTags||'<span class="comp-tag">Sin selección</span>'}</div>
-          <div style="font-size:11px;color:var(--muted);"><span style="font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Pruebas:</span> ${activTests}</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px;"><span style="font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Pruebas:</span> ${activTests}</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;"><span style="font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--red);">Falla:</span> ${pFail}</div>
+          ${pDet ? `<div style="font-size:11px;margin-bottom:4px;"><span style="font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#92400e;">⚙️ Detección:</span> ${pDet}</div>` : ''}
+          ${pOp ? `<div style="font-size:11px;margin-bottom:4px;"><span style="font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#1e40af;">👤 Operador:</span> ${pOp}</div>` : ''}
+          <div style="font-size:11px;color:var(--muted);"><span style="font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--green);">Solución:</span> ${pSol}</div>
         </div>`;
     }).join('');
 
@@ -2237,12 +2305,7 @@ function renderHistory() {
         </div>
         <div class="divider"></div>
         ${partsHtml}
-        <div class="detail-text-grid" style="margin-top:8px;">
-          <div class="detail-text-box"><label>Falla Detectada</label><p>${r.fail||'—'}</p></div>
-          ${(r.defectDetection && r.defectDetection.length>0) ? `<div class="detail-text-box" style="border-left:3px solid #f59e0b;"><label style="color:#92400e;">⚙️ Defectos de Detección (Tester)</label><p>${r.defectDetection.join(', ')}</p></div>` : ''}
-          ${(r.defectOperator && r.defectOperator.length>0) ? `<div class="detail-text-box" style="border-left:3px solid #2563eb;"><label style="color:#1e40af;">👤 Defectos de Operador</label><p>${r.defectOperator.join(', ')}</p></div>` : ''}
-          <div class="detail-text-box"><label>Solución Implementada</label><p>${r.solution||'—'}</p></div>
-        </div>
+
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn-delete admin-only" onclick="deleteRecord(${idx})"> Eliminar registro</button>
           <button class="btn-edit admin-only" onclick="editRecord(${idx})"> Editar registro</button>
@@ -2287,17 +2350,11 @@ function clearForm() {
   document.getElementById('f-cell').value = '';
   document.getElementById('f-slot').value = '';
   document.getElementById('f-tester').value = '';
-  document.getElementById('f-solution').value = '';
   document.getElementById('f-inspector').value = '';
   document.getElementById('f-client').value = 'AUTOLIV';
   document.getElementById('f-client-other').value = '';
   document.getElementById('f-client-other').style.display = 'none';
   document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
-  selectedFailures = {};
-  selectedDefects = {};
-  document.getElementById('f-fail-other').value = '';
-  document.getElementById('other-failure-container').style.display = 'none';
-  renderFailures();
   partBlocks = [];
   addPartBlock();
   window.scrollTo({top:0, behavior:'smooth'});
