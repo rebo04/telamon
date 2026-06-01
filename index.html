@@ -642,6 +642,7 @@ body {
 }
 /* hide admin-only elements for viewers */
 body.role-viewer .admin-only { display: none !important; }
+body.role-checker .admin-only { display: none !important; }
 body.role-viewer #tab-form { display: none !important; }
 
 </style>
@@ -1883,7 +1884,7 @@ function showToast(msg, error=false) {
 }
 
 function switchTab(tab) {
-  if (tab === 'form' && !window._isAdmin) tab = 'history';
+  if (tab === 'form' && !window._isAdmin && !window._isChecker) tab = 'history';
   document.getElementById('view-form').style.display = tab==='form' ? 'block' : 'none';
   document.getElementById('view-history').style.display = tab==='history' ? 'block' : 'none';
   document.getElementById('tab-form').classList.toggle('active', tab==='form');
@@ -1961,28 +1962,38 @@ function toggleHistory(idx) {
 
 
 // ── AUTH ──
-const PASS_ADMIN  = 'REBO1505';
-const PASS_VIEWER = 'TELAMON2026';
+const PASS_ADMIN    = 'REBO1505';
+const PASS_CHECKER  = 'CHECKUSER';
+const PASS_VIEWER   = 'TELAMON2026';
 window._isAdmin = false;
+window._isChecker = false;
+
+function applyRole(role) {
+  document.body.classList.remove('role-admin','role-checker','role-viewer');
+  document.getElementById('login-screen').style.display = 'none';
+  sessionStorage.setItem('tlm_role', role);
+  if (role === 'admin') {
+    window._isAdmin = true; window._isChecker = false;
+    document.body.classList.add('role-admin');
+    switchTab('form');
+  } else if (role === 'checker') {
+    window._isAdmin = false; window._isChecker = true;
+    document.body.classList.add('role-checker');
+    switchTab('form');
+  } else {
+    window._isAdmin = false; window._isChecker = false;
+    document.body.classList.add('role-viewer');
+    switchTab('history');
+  }
+}
 
 function doLogin() {
   const val = document.getElementById('login-input').value.trim();
   const err = document.getElementById('login-error');
-  if (val === PASS_ADMIN) {
-    window._isAdmin = true;
-    document.body.classList.add('role-admin');
-    document.body.classList.remove('role-viewer');
-    document.getElementById('login-screen').style.display = 'none';
-    sessionStorage.setItem('tlm_role', 'admin');
-    switchTab('form');
-  } else if (val === PASS_VIEWER) {
-    window._isAdmin = false;
-    document.body.classList.add('role-viewer');
-    document.body.classList.remove('role-admin');
-    document.getElementById('login-screen').style.display = 'none';
-    sessionStorage.setItem('tlm_role', 'viewer');
-    switchTab('history');
-  } else {
+  if (val === PASS_ADMIN)        { applyRole('admin'); }
+  else if (val === PASS_CHECKER) { applyRole('checker'); }
+  else if (val === PASS_VIEWER)  { applyRole('viewer'); }
+  else {
     err.style.display = 'block';
     document.getElementById('login-input').value = '';
     setTimeout(() => err.style.display = 'none', 2500);
@@ -1991,16 +2002,7 @@ function doLogin() {
 
 function checkSession() {
   const role = sessionStorage.getItem('tlm_role');
-  if (role === 'admin') {
-    window._isAdmin = true;
-    document.body.classList.add('role-admin');
-    document.getElementById('login-screen').style.display = 'none';
-  } else if (role === 'viewer') {
-    window._isAdmin = false;
-    document.body.classList.add('role-viewer');
-    document.getElementById('login-screen').style.display = 'none';
-    switchTab('history');
-  }
+  if (role) applyRole(role);
 }
 
 init();
