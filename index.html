@@ -1,0 +1,1813 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Telamon QC">
+<meta name="theme-color" content="#1e293b">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Inspección Tester – Telamon</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap');
+
+:root {
+  --bg: #f3f4f6;
+  --surface: #ffffff;
+  --surface2: #f9fafb;
+  --border: #d1d5db;
+  --accent: #1e293b;
+  --accent2: #2563eb;
+  --green: #059669;
+  --red: #dc2626;
+  --text: #4b5563;
+  --text-dark: #111827;
+  --muted: #6b7280;
+  --radius: 4px;
+  --font: 'IBM Plex Sans', sans-serif;
+  --mono: 'IBM Plex Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 15px;
+  overscroll-behavior: none;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand-badge {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  text-transform: uppercase;
+}
+.brand-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+.brand-sub {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+.topbar-right {
+  display: flex;
+  gap: 10px;
+}
+.btn-icon {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dark);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s;
+}
+.btn-icon:active { background: var(--border); }
+.btn-icon svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ── TABS ── */
+.tabs {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  gap: 4px;
+}
+.tab {
+  padding: 14px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.tab.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+
+/* ── CONTENT ── */
+.content { padding: 20px; max-width: 900px; margin: 0 auto; }
+
+/* ── SECTION ── */
+.section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.section-head {
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-head svg { width: 18px; height: 18px; stroke: var(--accent2); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.section-head span {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--muted);
+}
+.section-body { padding: 18px; }
+
+/* ── GRID META ── */
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+@media (max-width: 600px) { .meta-grid { grid-template-columns: 1fr 1fr; } }
+
+.field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.field input, .field select, .field textarea {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-dark);
+  font-family: var(--font);
+  font-size: 15px;
+  padding: 12px 14px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  appearance: none;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--accent2);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+.field textarea { resize: vertical; min-height: 80px; }
+.field select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394a3b8' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 38px; }
+
+/* ── COMPONENT ROWS ── */
+.comp-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.comp-row-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.comp-row:last-child { border-bottom: none; }
+.comp-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+.toggle-group {
+  display: flex;
+  gap: 6px;
+}
+.toggle-btn {
+  min-width: 72px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  transition: all 0.15s;
+  text-align: center;
+  letter-spacing: 0.3px;
+  user-select: none;
+}
+.toggle-btn:active { transform: scale(0.96); }
+.toggle-btn.yes.active { background: #d1fae5; border-color: var(--green); color: var(--green); }
+.toggle-btn.no.active  { background: #fee2e2; border-color: var(--red);   color: var(--red); }
+.toggle-btn.req.active { background: #dbeafe; border-color: var(--accent2); color: var(--accent2); }
+.toggle-btn.nreq.active{ background: #f3f4f6; border-color: var(--muted); color: var(--muted); }
+.col-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  text-align: center;
+  min-width: 72px;
+}
+
+/* ── TEST CHECKS ── */
+.test-checks {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+.check-item:active { transform: scale(0.98); }
+.check-item.active {
+  border-color: var(--accent2);
+  background: #eff6ff;
+}
+.check-box {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.check-item.active .check-box {
+  background: var(--accent2);
+  border-color: var(--accent2);
+}
+.check-box svg { width: 13px; height: 13px; stroke: #fff; fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; opacity: 0; transition: opacity 0.15s; }
+.check-item.active .check-box svg { opacity: 1; }
+.check-label { font-size: 14px; font-weight: 600; color: var(--text-dark); }
+
+/* ── SUB-PILLS (MULTIPLE SELECTIONS) ── */
+.sub-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 50px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+.sub-pill:active { transform: scale(0.95); }
+.sub-pill.active {
+  background: #eff6ff;
+  border-color: var(--accent2);
+  color: var(--accent2);
+}
+
+/* ── SUBMIT BTN ── */
+.submit-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+.btn-submit {
+  flex: 1;
+  background: var(--accent2);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 18px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: opacity 0.15s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.btn-submit:active { transform: scale(0.98); opacity: 0.9; }
+.btn-submit svg { width: 20px; height: 20px; stroke: #fff; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.btn-clear {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 18px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-clear:active { background: var(--border); }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--green);
+  color: #000;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 14px 28px;
+  border-radius: 50px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  z-index: 999;
+  transition: transform 0.3s cubic-bezier(.17,.67,.38,1.3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ── HISTORY ── */
+.history-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+.history-empty svg { width: 48px; height: 48px; stroke: var(--border); fill: none; stroke-width: 1.5; margin: 0 auto 16px; display: block; }
+.record-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.record-head {
+  background: var(--surface2);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+.record-meta { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.record-id {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-dark);
+  font-weight: 500;
+}
+.record-part {
+  font-size: 14px;
+  font-weight: 700;
+}
+.record-date {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+.status-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 50px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.pill-ok { background: #d1fae5; color: var(--green); }
+.pill-fail { background: #fee2e2; color: var(--red); }
+.record-body {
+  padding: 16px 18px;
+  display: none;
+  border-top: 1px solid var(--border);
+}
+.record-body.open { display: block; }
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.detail-item label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 3px;
+}
+.detail-item span {
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--mono);
+}
+.comp-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.comp-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.comp-tag.yes { border-color: var(--green); color: var(--green); background: #d1fae5; }
+.comp-tag.no  { border-color: var(--red);   color: var(--red);   background: #fee2e2; }
+.detail-text-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.detail-text-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+.detail-text-box label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 5px;
+}
+.detail-text-box p { font-size: 13px; line-height: 1.5; }
+.btn-delete {
+  background: #fee2e2;
+  border: 1px solid var(--red);
+  color: var(--red);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 12px;
+  transition: background 0.15s;
+}
+.btn-delete:active { background: #fca5a5; }
+
+/* stats bar */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.stat-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  padding: 14px;
+  text-align: center;
+}
+.stat-num {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: var(--mono);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.stat-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* divider */
+.divider { height: 1px; background: var(--border); margin: 6px 0 14px; }
+
+/* col headers for components */
+.comp-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.comp-header-name { flex: 1; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+
+.btn-edit {
+  background: #eff6ff;
+  border: 1px solid var(--accent2);
+  color: var(--accent2);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 12px;
+  margin-left: 8px;
+}
+
+.btn-history {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  color: #f59e0b;
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 12px;
+  margin-left: 8px;
+}
+
+.history-log {
+  margin-top: 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  font-size: 12px;
+}
+
+.history-item {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.btn-solve {
+  background: #ecfdf5;
+  border: 1px solid var(--green);
+  color: var(--green);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 12px;
+  margin-left: 8px;
+}
+.btn-solve:active { background: #d1fae5; }
+</style>
+
+<!-- xlsx-js-style: SheetJS con soporte completo de estilos de celda -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="brand-badge">Telamon</div>
+    <div>
+      <div class="brand-title">Inspección Tester</div>
+      <div class="brand-sub" id="current-date">--</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <button class="btn-icon" onclick="switchTab('form')">
+      <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Nuevo
+    </button>
+    <button class="btn-icon" onclick="switchTab('history')">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Historial
+    </button>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" id="tab-form" onclick="switchTab('form')">Captura</div>
+  <div class="tab" id="tab-history" onclick="switchTab('history')">Registros</div>
+</div>
+
+<!-- ===== FORM VIEW ===== -->
+<div id="view-form" class="content">
+
+  <!-- META -->
+  <div class="section">
+    <div class="section-head">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>
+      <span>Datos Generales</span>
+    </div>
+    <div class="section-body">
+      <div class="meta-grid">
+        <div class="field">
+          <label>Cell</label>
+          <input type="number" id="f-cell" placeholder="Ej. 215" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>Fecha</label>
+          <input type="date" id="f-date">
+        </div>
+        <div class="field">
+          <label>Slot</label>
+          <input type="text" id="f-slot" placeholder="Ej. B12">
+        </div>
+        <div class="field">
+          <label>Cliente</label>
+          <select id="f-client" onchange="toggleOtherClient(this.value)">
+            <option value="AUTOLIV" selected>AUTOLIV</option>
+            <option value="ZF">ZF</option>
+            <option value="JOYSON SAFETY SYSTEMS">JOYSON SAFETY SYSTEMS</option>
+            <option value="WHIRPOOL">WHIRPOOL</option>
+            <option value="BOSCH">BOSCH</option>
+            <option value="Otro">Otro...</option>
+          </select>
+          <input type="text" id="f-client-other" placeholder="Especificar cliente..." style="display:none; margin-top:8px;">
+        </div>
+        <div class="field">
+          <label>Tester (ID)</label>
+          <input type="text" id="f-tester" placeholder="Ej. EID3520">
+        </div>
+        <div class="field">
+          <label>Inspector / Operador</label>
+          <input type="text" id="f-inspector" placeholder="Nombre del encargado">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PART NUMBERS DINÁMICOS -->
+  <div id="partnums-blocks"></div>
+
+  <div style="margin-bottom:16px;">
+    <button class="btn-icon" onclick="addPartBlock()" style="width:100%;justify-content:center;border-style:dashed;color:var(--accent2);border-color:var(--accent2);">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Agregar otro Part Number
+    </button>
+  </div>
+
+  <!-- FALLA GLOBAL -->
+  <div class="section">
+    <div class="section-head">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span>Resultados Generales</span>
+    </div>
+    <div class="section-body">
+      <div class="field" style="margin-bottom:14px;">
+        <label>Fallas Detectadas</label>
+        <div class="test-checks" id="failure-list"></div>
+      </div>
+      <div class="field" id="other-failure-container" style="display:none; margin-bottom:14px;">
+        <label>Especificar Otra Falla</label>
+        <textarea id="f-fail-other" placeholder="Describe la falla especial..."></textarea>
+      </div>
+      <div class="field">
+        <label>Solución Implementada</label>
+        <textarea id="f-solution" placeholder="Describe la solución…&#10;(o N/A)"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBMIT -->
+  <div class="submit-row">
+    <button class="btn-clear" onclick="clearForm()">Limpiar</button>
+    <button class="btn-submit" onclick="submitForm()">
+      <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+      Guardar Registro
+    </button>
+  </div>
+</div>
+
+<!-- ===== HISTORY VIEW ===== -->
+<div id="view-history" class="content" style="display:none">
+  <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+    <button class="btn-icon" onclick="importRecords()">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Importar JSON
+    </button>
+    <button class="btn-icon" onclick="exportRecords()" style="border-color:var(--accent2);color:var(--accent2);">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      JSON
+    </button>
+    <button class="btn-icon" onclick="exportExcel()" style="border-color:var(--green);color:var(--green);background:#ecfdf5;">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Exportar Excel
+    </button>
+  </div>
+  <div class="stats-bar" id="stats-bar"></div>
+  <div id="history-list"></div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+  <span id="toast-msg">Registro guardado</span>
+</div>
+
+<script>
+// ── DATA ──
+const COMPONENTS_DICT = {
+  'Cinta (Tape) - Material': ['PVC', 'Tela / PET (Cloth)', 'Fleece / PE (Vellón)', 'Aluminio', 'Teflón (PTFE)', 'Mastic', 'Kapton', 'Fibra de Vidrio'],
+  'Cinta (Tape) - Aplicación': ['Espiral / Traslape (Half-lap)', 'Punteada (Spot Tape)', 'Continua (Corrida)', 'Longitudinal', 'Espaciada (Open gap)', 'Bandera (Flag)'],
+  'Tubo / Cubierta': ['Corrugado Abierto (Slit Loom)', 'Corrugado Cerrado', 'Manga Térmica (Heat Shrink)', 'Tubo PVC', 'Grommet (Pasamuros)'],
+  'Protección': ['Malla (Braided Sleeve)', 'Esponja (Foam)', 'Cinta Anti-Ruido (Anti-Rattle)'],
+  'Sujeción (Clips/Ties)': ['Clip (Fir Tree/Rosebud)', 'Clip Edge', 'Clip con Corbata', 'Corbata (Cable Tie)', 'Canaleta (Channel)'],
+  'Cable': ['Convencional (TXL/FLRY)', 'Par Trenzado', 'Blindado (Shielded)', 'Coaxial', 'Cable de Batería'],
+  'Conector': ['Sellado (Sealed)', 'No Sellado', 'Inline (Conector-Conector)', 'Dummy Plug (Tapón)'],
+  'Accesorios Conector': ['TPA', 'CPA', 'PLR', 'Backshell / Wire Dress', 'Cavity Plug (Sello ciego)'],
+  'Terminal': ['Pin (Macho)', 'Socket (Hembra)', 'Terminal de Ojillo (Tierra)', 'Espada', 'IDC'], 
+  'Empalme (Splice)': ['Soldadura Ultrasónica', 'Crimp Splice', 'Solder Sleeve'],
+  'Componentes Especiales': ['Relay', 'Fusible', 'Diodo / Resistencia', 'Ferrita', 'Inflador (Airbag)', 'Sensor', 'Barcode / QR Code'] 
+};
+const COMPONENTS = Object.keys(COMPONENTS_DICT);
+
+const TESTS = [
+  'Continuidad Eléctrica',
+  'Cortocircuito / Aislamiento',
+  'Caída de Tensión',
+  'Hipot (Dieléctrico/Alta Tensión)',
+  'Push-Pull (Extracción)',
+  'Push-Out Force (Empuje Terminal)',
+  'Prueba de Fuga (Leak Test)',
+  'Verificación Dimensional / Ruteo',
+  'Detección de Candados (TPA/CPA)',
+  'Detección de Clips / Sujeción',
+  'Verificación de Color (Visión)',
+  'Presencia de Cinta / Spot Tape',
+  'Alineación de Terminal',
+  'Escaneo Barcode',
+  'Poka-Yoke'
+];
+
+// ── FALLAS COMUNES ──
+const FAILURES = [
+  'Terminal no insertada (Push-back)',
+  'Cables invertidos (Miswire)',
+  'Circuito abierto / Sin continuidad',
+  'Cortocircuito',
+  'Falta de componente (Clip, Sello, TPA)',
+  'Daño en aislamiento / Cobre expuesto',
+  'Conector dañado / Roto',
+  'Ruteo incorrecto / Longitud',
+  'Encintado defectuoso / Faltante',
+  'Terminal dañada / Deformada'
+];
+
+// ── STATE ──
+// partBlocks: [{ partnum, compState:{}, testState:{} }, ...]
+let partBlocks = [];
+let records = [];
+let selectedFailures = {};
+
+// ── INIT ──
+function init() {
+  const now = new Date();
+  document.getElementById('current-date').textContent =
+    now.toLocaleDateString('es-MX', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+  document.getElementById('f-date').value = now.toISOString().split('T')[0];
+  loadRecords();
+  addPartBlock(); // start with one block
+  renderFailures();
+}
+
+// ── PART BLOCK ──
+function makeEmptyBlock() {
+  const comp = {};
+  COMPONENTS.forEach(c => { comp[c] = { yes: false, no: false, subtypes: [] }; });
+  const test = {};
+  TESTS.forEach(t => { test[t] = false; });
+  return { partnum: '', compState: comp, testState: test };
+}
+
+function addPartBlock() {
+  partBlocks.push(makeEmptyBlock());
+  renderAllBlocks();
+}
+
+function removePartBlock(idx) {
+  if (partBlocks.length === 1) { showToast('Debe haber al menos un Part Number', true); return; }
+  partBlocks.splice(idx, 1);
+  renderAllBlocks();
+}
+
+function renderAllBlocks() {
+  const container = document.getElementById('partnums-blocks');
+  container.innerHTML = '';
+  partBlocks.forEach((block, idx) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'section';
+    wrap.style.marginBottom = '16px';
+    wrap.innerHTML = `
+      <div class="section-head" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--accent2);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+          <span>Part Number ${partBlocks.length > 1 ? idx+1 : ''}</span>
+        </div>
+        ${partBlocks.length > 1 ? `<button onclick="removePartBlock(${idx})" style="background:#fee2e2;border:1px solid var(--red);color:var(--red);border-radius:var(--radius);padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer;">✕ Quitar</button>` : ''}
+      </div>
+      <div class="section-body">
+        <div class="field" style="margin-bottom:14px;">
+          <label>Part Number</label>
+          <input type="text" class="pn-input" data-idx="${idx}" placeholder="Ej. 667080300A"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-dark);font-family:var(--font);font-size:15px;padding:12px 14px;outline:none;transition:border-color 0.15s, box-shadow 0.15s;"
+            value="${block.partnum}" oninput="partBlocks[${idx}].partnum=this.value"
+            onfocus="this.style.borderColor='var(--accent2)';this.style.boxShadow='0 0 0 3px rgba(37,99,235,0.15)';"
+            onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none';">
+        </div>
+        <div class="comp-header">
+          <div class="comp-header-name">Componente</div>
+          <div class="col-label">SÍ</div>
+          <div class="col-label">NO</div>
+        </div>
+        <div id="comp-list-${idx}"></div>
+        <div style="margin-top:14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:10px;">Pruebas Realizadas</div>
+        <div class="test-checks" id="test-list-${idx}"></div>
+      </div>
+    `;
+    container.appendChild(wrap);
+    renderBlockComponents(idx);
+    renderBlockTests(idx);
+  });
+}
+
+function renderBlockComponents(idx) {
+  const el = document.getElementById(`comp-list-${idx}`);
+  if (!el) return;
+  el.innerHTML = '';
+  const block = partBlocks[idx];
+  COMPONENTS.forEach(c => {
+    const row = document.createElement('div');
+    row.className = 'comp-row';
+    
+    const cs = block.compState[c] || { yes: false, no: false, subtype: '' };
+    const subtypes = COMPONENTS_DICT[c] || [];
+    
+    let subSelect = '';
+    if (cs.yes && subtypes.length > 0) {
+      if (!cs.subtypes) cs.subtypes = cs.subtype ? [cs.subtype] : []; // retrocompatibilidad
+      const pillsHtml = subtypes.map(sub => {
+        const isActive = cs.subtypes.includes(sub);
+        return `<div class="sub-pill ${isActive ? 'active' : ''}" onclick="toggleSubtype(${idx}, '${c}', '${sub}')">${sub}</div>`;
+      }).join('');
+
+      subSelect = `
+        <div style="padding-left: 12px; border-left: 2px solid var(--accent2); margin-left: 2px; margin-top: 2px; display:flex; flex-wrap:wrap; gap:6px;">
+          ${pillsHtml}
+        </div>
+      `;
+    }
+
+    row.innerHTML = `
+      <div class="comp-row-header">
+        <div class="comp-name">${c}</div>
+        <div class="toggle-group">
+          <div class="toggle-btn yes ${cs.yes?'active':''}" onclick="toggleBlockComp(${idx},'${c}','yes')">SÍ</div>
+          <div class="toggle-btn no  ${cs.no ?'active':''}" onclick="toggleBlockComp(${idx},'${c}','no')">NO</div>
+        </div>
+      </div>
+      ${subSelect}
+    `;
+    el.appendChild(row);
+  });
+}
+
+function renderBlockTests(idx) {
+  const el = document.getElementById(`test-list-${idx}`);
+  if (!el) return;
+  el.innerHTML = '';
+  const block = partBlocks[idx];
+  TESTS.forEach(t => {
+    const item = document.createElement('div');
+    item.className = `check-item ${block.testState[t]?'active':''}`;
+    item.onclick = () => { block.testState[t] = !block.testState[t]; renderBlockTests(idx); };
+    item.innerHTML = `
+      <div class="check-box">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <span class="check-label">${t}</span>
+    `;
+    el.appendChild(item);
+  });
+}
+
+function toggleBlockComp(idx, name, key) {
+  const cs = partBlocks[idx].compState[name];
+  cs[key] = !cs[key];
+  if (key === 'yes' && cs.yes) cs.no = false;
+  if (key === 'no'  && cs.no)  cs.yes = false;
+  
+  // Limpiar el subtipo seleccionado si se desmarca el SÍ
+  if (!cs.yes) {
+    cs.subtype = '';
+    cs.subtypes = [];
+  }
+  
+  renderBlockComponents(idx);
+}
+
+function toggleSubtype(idx, name, val) {
+  const cs = partBlocks[idx].compState[name];
+  if (!cs.subtypes) cs.subtypes = cs.subtype ? [cs.subtype] : [];
+  if (cs.subtypes.includes(val)) cs.subtypes = cs.subtypes.filter(s => s !== val);
+  else cs.subtypes.push(val);
+  cs.subtype = ''; // limpiar string antiguo
+  renderBlockComponents(idx);
+}
+
+function renderFailures() {
+  const el = document.getElementById('failure-list');
+  if (!el) return;
+  el.innerHTML = '';
+  [...FAILURES, 'Otro'].forEach(f => {
+    const item = document.createElement('div');
+    item.className = `check-item ${selectedFailures[f] ? 'active' : ''}`;
+    item.onclick = () => {
+      selectedFailures[f] = !selectedFailures[f];
+      if (f === 'Otro') {
+        document.getElementById('other-failure-container').style.display = selectedFailures[f] ? 'block' : 'none';
+      }
+      renderFailures();
+    };
+    item.innerHTML = `
+      <div class="check-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <span class="check-label" style="font-size: 13px;">${f}</span>
+    `;
+    el.appendChild(item);
+  });
+}
+
+// ── SUBMIT ──
+function submitForm() {
+  const cell      = document.getElementById('f-cell').value.trim();
+  const date      = document.getElementById('f-date').value;
+  const slot      = document.getElementById('f-slot').value.trim();
+  let client      = document.getElementById('f-client').value.trim();
+  if (client === 'Otro') {
+    client = document.getElementById('f-client-other').value.trim() || 'Otro';
+  }
+  const tester    = document.getElementById('f-tester').value.trim();
+  
+  let fail = Object.keys(selectedFailures).filter(k => selectedFailures[k] && k !== 'Otro').join(', ');
+  if (selectedFailures['Otro']) {
+    const otherFail = document.getElementById('f-fail-other').value.trim();
+    if (otherFail) {
+      fail += (fail ? ', ' : '') + 'Otro: ' + otherFail;
+    } else {
+      fail += (fail ? ', ' : '') + 'Otro';
+    }
+  }
+  if (!fail) fail = 'N/A';
+
+  const solution  = document.getElementById('f-solution').value.trim();
+  const inspector = document.getElementById('f-inspector').value.trim();
+
+  // Sync partnum inputs (oninput already syncs, but safety check)
+  document.querySelectorAll('.pn-input').forEach((inp, i) => {
+    if (partBlocks[i]) partBlocks[i].partnum = inp.value.trim();
+  });
+
+  const validBlocks = partBlocks.filter(b => b.partnum.trim() !== '');
+  if (!cell || !date || validBlocks.length === 0 || !tester) {
+    showToast('Llena Cell, Fecha, al menos un Part Number y Tester', true);
+    return;
+  }
+
+  // Validar duplicados en el formulario actual
+  const formPNs = validBlocks.map(b => b.partnum.trim().toLowerCase());
+  const uniqueFormPNs = new Set(formPNs);
+  if (uniqueFormPNs.size !== formPNs.length) {
+    showToast('Hay Part Numbers duplicados en el formulario', true);
+    return;
+  }
+
+  // Validar duplicados en el historial general
+  for (const pn of validBlocks.map(b => b.partnum.trim())) {
+    const pnLower = pn.toLowerCase();
+    const exists = records.some(r => {
+      if (r.parts) return r.parts.some(p => p.partnum.toLowerCase() === pnLower);
+      return r.partnum && r.partnum.toLowerCase() === pnLower;
+    });
+    if (exists) {
+      showToast(`El Part Number "${pn}" ya existe. Elimínalo en el historial primero.`, true);
+      return;
+    }
+  }
+
+  const isSolved = (fail !== 'N/A' && solution !== '' && solution.toLowerCase() !== 'n/a');
+
+  const record = {
+    id: Date.now(),
+    cell, date, slot, client, tester, fail, solution, inspector,
+    solved: isSolved,
+    partnum: validBlocks.map(b => b.partnum).join(' / '),
+    parts: validBlocks.map(b => ({
+      partnum: b.partnum,
+      components: JSON.parse(JSON.stringify(b.compState)),
+      tests: JSON.parse(JSON.stringify(b.testState))
+    })),
+    ts: new Date().toISOString(),
+    changeHistory: [
+      {
+        date: new Date().toLocaleString('es-MX'),
+        action: 'CREADO',
+        detail: fail && fail.toLowerCase() !== 'n/a'
+          ? 'Registro creado con falla: ' + fail
+          : 'Registro creado sin falla'
+      }
+    ]
+  };
+
+  records.unshift(record);
+  saveRecords();
+  showToast('Registro guardado correctamente');
+  clearForm();
+}
+
+// ── STORAGE ──
+function saveRecords() {
+  try { localStorage.setItem('tester_records', JSON.stringify(records)); } catch(e) {}
+}
+function loadRecords() {
+  try {
+    const raw = localStorage.getItem('tester_records');
+    if (raw) records = JSON.parse(raw);
+  } catch(e) { records = []; }
+}
+
+// ── EXPORTAR ──
+function exportRecords() {
+  if (records.length === 0) { showToast('No hay registros para exportar', true); return; }
+  const blob = new Blob([JSON.stringify(records, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `registros_tester_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`${records.length} registros exportados`);
+}
+
+// ── EXPORTAR EXCEL (.XLSX) — ENGINEERING GRADE ──
+function exportExcel() {
+  if (records.length === 0) { showToast('No hay registros para exportar', true); return; }
+  if (typeof XLSX === 'undefined') { showToast('Error cargando librería Excel', true); return; }
+
+  const wb = XLSX.utils.book_new();
+  const today = new Date().toLocaleDateString('es-MX');
+  const todayISO = new Date().toISOString().slice(0,10);
+
+  // ── PALETA ──
+  const C = {
+    dark:     '1E293B', blue:    '2563EB', blueLt:  'DBEAFE',
+    green:    '059669', greenLt: 'D1FAE5', red:     'DC2626',
+    redLt:    'FEE2E2', amber:   'F59E0B', amberLt: 'FEF3C7',
+    gray:     '6B7280', grayLt:  'F3F4F6', white:   'FFFFFF',
+    hdr2:     '1E3A5F', border:  'D1D5DB',
+  };
+
+  function hdr(fgRGB, bgRGB, bold=true, sz=10, italic=false) {
+    return { font: { name:'Arial', sz, bold, color:{rgb:fgRGB}, italic },
+             fill: { patternType:'solid', fgColor:{rgb:bgRGB} },
+             alignment: { horizontal:'center', vertical:'center', wrapText:true },
+             border: { top:{style:'thin',color:{rgb:C.border}}, bottom:{style:'thin',color:{rgb:C.border}},
+                       left:{style:'thin',color:{rgb:C.border}}, right:{style:'thin',color:{rgb:C.border}} } };
+  }
+  function cell(fgRGB, bgRGB, bold=false, sz=9, halign='left', wrap=true) {
+    return { font: { name:'Arial', sz, bold, color:{rgb:fgRGB} },
+             fill: { patternType:'solid', fgColor:{rgb:bgRGB} },
+             alignment: { horizontal:halign, vertical:'center', wrapText:wrap },
+             border: { top:{style:'thin',color:{rgb:C.border}}, bottom:{style:'thin',color:{rgb:C.border}},
+                       left:{style:'thin',color:{rgb:C.border}}, right:{style:'thin',color:{rgb:C.border}} } };
+  }
+  function titleStyle() {
+    return { font:{name:'Arial',sz:14,bold:true,color:{rgb:C.white}},
+             fill:{patternType:'solid',fgColor:{rgb:C.dark}},
+             alignment:{horizontal:'center',vertical:'center'} };
+  }
+
+  // ════════════════════════════════════════
+  // HOJA 1: PORTADA
+  // ════════════════════════════════════════
+  const aoa_cover = [];
+  aoa_cover.push(['TELAMON  —  INSPECCIÓN TESTER  |  WIRE HARNESS', '', '', '', '']);
+  aoa_cover.push(['REGISTRO DE CONTROL DE CALIDAD', '', '', '', '']);
+  aoa_cover.push(['']);
+  aoa_cover.push(['CAMPO', 'VALOR', '', '', '']);
+  aoa_cover.push(['Documento',      'REG-QC-TLM-001']);
+  aoa_cover.push(['Revisión',       'REV. A']);
+  aoa_cover.push(['Fecha de Emisión', today]);
+  aoa_cover.push(['Departamento',   'Calidad / Quality Engineering']);
+  aoa_cover.push(['Planta',         'Telamon – Wire Harness Division']);
+  aoa_cover.push(['Total Registros', records.length]);
+  aoa_cover.push(['Exportado por',  'Sistema Telamon Inspector v1.0']);
+  aoa_cover.push(['']);
+  aoa_cover.push(['HOJA', 'NOMBRE', 'DESCRIPCIÓN', '', '']);
+  aoa_cover.push(['1','PORTADA','Identificación del documento','','']);
+  aoa_cover.push(['2','REGISTRO','Registros reales capturados en la app','','']);
+  aoa_cover.push(['3','DASHBOARD','KPIs y métricas operativas','','']);
+  aoa_cover.push(['4','COMPONENTES','Catálogo de componentes del sistema','','']);
+  aoa_cover.push(['5','PRUEBAS','Catálogo de pruebas eléctricas y mecánicas','','']);
+  aoa_cover.push(['6','FALLAS','Catálogo de fallas y análisis de frecuencia','','']);
+
+  const ws_cover = XLSX.utils.aoa_to_sheet(aoa_cover);
+  ws_cover['!cols'] = [{wch:22},{wch:36},{wch:40},{wch:10},{wch:10}];
+  ws_cover['!rows'] = [{hpt:32},{hpt:20},{hpt:10},{hpt:22}];
+  ws_cover['!merges'] = [
+    {s:{r:0,c:0},e:{r:0,c:4}}, {s:{r:1,c:0},e:{r:1,c:4}},
+    {s:{r:3,c:0},e:{r:3,c:0}}, {s:{r:3,c:1},e:{r:3,c:4}},
+    {s:{r:12,c:2},e:{r:12,c:4}},
+    ...Array.from({length:6},(_,i)=>({s:{r:13+i,c:2},e:{r:13+i,c:4}}))
+  ];
+  // Styles
+  ws_cover['A1'].s = titleStyle();
+  ws_cover['A2'].s = { font:{name:'Arial',sz:11,bold:true,color:{rgb:'94A3B8'}},
+    fill:{patternType:'solid',fgColor:{rgb:C.dark}},
+    alignment:{horizontal:'center',vertical:'center'} };
+  ['A4','B4'].forEach(ref => { if(ws_cover[ref]) ws_cover[ref].s = hdr(C.white,C.hdr2); });
+  for(let i=4;i<=10;i++){
+    if(ws_cover[`A${i+1}`]) ws_cover[`A${i+1}`].s = cell(C.white,C.hdr2,true,10,'left',false);
+    if(ws_cover[`B${i+1}`]) ws_cover[`B${i+1}`].s = cell('111827',C.grayLt,false,10,'left',false);
+  }
+  ['A13','B13','C13'].forEach(ref => { if(ws_cover[ref]) ws_cover[ref].s = hdr(C.white,C.blue); });
+  for(let i=0;i<6;i++){
+    const r=14+i; const bg=i%2===0?C.white:'F0F4FF';
+    if(ws_cover[`A${r}`]) ws_cover[`A${r}`].s = cell(C.white,C.blue,true,10,'center',false);
+    if(ws_cover[`B${r}`]) ws_cover[`B${r}`].s = cell(C.dark,bg,true,10,'left',false);
+    if(ws_cover[`C${r}`]) ws_cover[`C${r}`].s = cell(C.gray,bg,false,9,'left',false);
+  }
+  XLSX.utils.book_append_sheet(wb, ws_cover, 'PORTADA');
+
+  // ════════════════════════════════════════
+  // HOJA 2: REGISTRO (datos reales)
+  // ════════════════════════════════════════
+  const REG_HEADERS = [
+    'ID','FECHA','HORA','TESTER/CELL','SLOT','INSPECTOR','CLIENTE',
+    'PART NUMBER','COMPONENTES DETECTADOS','PRUEBAS REALIZADAS',
+    'FALLA DETECTADA','ESTATUS','SOLUCIÓN IMPLEMENTADA','OBSERVACIONES'
+  ];
+
+  const aoa_reg = [];
+  // Fila 0: título
+  aoa_reg.push([`TELAMON  |  REGISTRO DE INSPECCIÓN TESTER  —  WIRE HARNESS`, ...Array(REG_HEADERS.length-1).fill('')]);
+  // Fila 1: sub-header
+  aoa_reg.push([`Documento: REG-QC-TLM-001  |  Rev. A  |  Exportado: ${today}`, ...Array(REG_HEADERS.length-1).fill('')]);
+  // Fila 2: headers de columna
+  aoa_reg.push(REG_HEADERS);
+
+  records.forEach((r, idx) => {
+    const hasFail = r.fail && r.fail.toLowerCase() !== 'n/a' && r.fail.trim() !== '';
+    const status = hasFail && !r.solved ? 'CON FALLA' : hasFail && r.solved ? 'SOLUCIONADO' : 'OK';
+    const dateStr = new Date(r.date+'T12:00:00').toLocaleDateString('es-MX');
+    const timeStr = new Date(r.ts).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+    const parts = r.parts || [{partnum:r.partnum, components:r.components, tests:r.tests}];
+
+    parts.forEach(p => {
+      let compStr = '';
+      if (p.components) {
+        compStr = Object.keys(p.components)
+          .filter(c => p.components[c] && p.components[c].yes)
+          .map(c => {
+            const st = p.components[c];
+            const sub = (st.subtypes && st.subtypes.length > 0) ? st.subtypes.join(', ') : (st.subtype||'');
+            return sub ? `${c.split('/')[0].trim()} (${sub})` : c.split('/')[0].trim();
+          }).join(' · ');
+      }
+      const testStr = p.tests ? TESTS.filter(t => p.tests[t]).join(' · ') : '';
+      aoa_reg.push([
+        `#${String(idx+1).padStart(3,'0')}`,
+        dateStr, timeStr,
+        r.cell||'', r.slot||'', r.inspector||'', r.client||'',
+        p.partnum||'', compStr, testStr,
+        r.fail||'N/A', status, r.solution||'N/A', ''
+      ]);
+    });
+  });
+
+  const ws_reg = XLSX.utils.aoa_to_sheet(aoa_reg);
+  ws_reg['!cols'] = [
+    {wch:7},{wch:12},{wch:8},{wch:12},{wch:6},{wch:14},{wch:12},
+    {wch:18},{wch:32},{wch:32},{wch:34},{wch:13},{wch:34},{wch:20}
+  ];
+  ws_reg['!rows'] = [{hpt:28},{hpt:16},{hpt:28}];
+  ws_reg['!merges'] = [
+    {s:{r:0,c:0},e:{r:0,c:REG_HEADERS.length-1}},
+    {s:{r:1,c:0},e:{r:1,c:REG_HEADERS.length-1}}
+  ];
+  // Style title rows
+  if(ws_reg['A1']) ws_reg['A1'].s = titleStyle();
+  if(ws_reg['A2']) ws_reg['A2'].s = { font:{name:'Arial',sz:9,italic:true,color:{rgb:C.gray}},
+    fill:{patternType:'solid',fgColor:{rgb:C.grayLt}}, alignment:{horizontal:'center'} };
+  // Header row (row index 2)
+  REG_HEADERS.forEach((_,ci) => {
+    const ref = XLSX.utils.encode_cell({r:2,c:ci});
+    if(ws_reg[ref]) ws_reg[ref].s = hdr(C.white, C.blue, true, 10);
+  });
+  // Data rows
+  for(let ri=3; ri<aoa_reg.length; ri++){
+    const alt = (ri%2===0);
+    const bg = alt ? 'F9FAFB' : C.white;
+    const statusVal = aoa_reg[ri][11];
+    REG_HEADERS.forEach((_,ci) => {
+      const ref = XLSX.utils.encode_cell({r:ri,c:ci});
+      if(!ws_reg[ref]) return;
+      if(ci === 11) { // ESTATUS
+        const sc = statusVal==='OK' ? {fg:C.green,bg:C.greenLt} :
+                   statusVal==='CON FALLA' ? {fg:C.red,bg:C.redLt} : {fg:C.blue,bg:C.blueLt};
+        ws_reg[ref].s = cell(sc.fg, sc.bg, true, 9, 'center', false);
+      } else if(ci===0){
+        ws_reg[ref].s = cell(C.gray, bg, false, 9, 'center', false);
+      } else {
+        ws_reg[ref].s = cell('111827', bg, false, 9, ci<=3?'center':'left', true);
+      }
+    });
+  }
+  XLSX.utils.book_append_sheet(wb, ws_reg, 'REGISTRO');
+
+  // ════════════════════════════════════════
+  // HOJA 3: DASHBOARD (KPIs reales)
+  // ════════════════════════════════════════
+  const total = records.length;
+  const totalPNs = records.reduce((a,r)=>a+(r.parts?r.parts.length:1),0);
+  const okCount = records.filter(r=>{ const hf=r.fail&&r.fail.toLowerCase()!=='n/a'&&r.fail.trim()!==''; return !hf; }).length;
+  const failCount = records.filter(r=>{ const hf=r.fail&&r.fail.toLowerCase()!=='n/a'&&r.fail.trim()!==''; return hf&&!r.solved; }).length;
+  const solvedCount = records.filter(r=>{ const hf=r.fail&&r.fail.toLowerCase()!=='n/a'&&r.fail.trim()!==''; return hf&&r.solved; }).length;
+  const fpy = total>0 ? (okCount/total*100).toFixed(1)+'%' : '0.0%';
+  const testersSet = [...new Set(records.map(r=>r.tester))];
+
+  // Falla frequency
+  const failFreq = {};
+  records.forEach(r=>{ if(r.fail&&r.fail.toLowerCase()!=='n/a'&&r.fail.trim()!==''){
+    r.fail.split(',').forEach(f=>{ const ff=f.trim(); failFreq[ff]=(failFreq[ff]||0)+1; });
+  }});
+  const failSorted = Object.entries(failFreq).sort((a,b)=>b[1]-a[1]);
+
+  // Tester stats
+  const tStats = {};
+  records.forEach(r=>{
+    const t=r.tester||'?';
+    if(!tStats[t]) tStats[t]={total:0,ok:0,fail:0,solved:0};
+    tStats[t].total++;
+    const hf=r.fail&&r.fail.toLowerCase()!=='n/a'&&r.fail.trim()!=='';
+    if(!hf) tStats[t].ok++;
+    else if(!r.solved) tStats[t].fail++;
+    else tStats[t].solved++;
+  });
+
+  const aoa_dash = [];
+  aoa_dash.push(['TELAMON  |  DASHBOARD DE CALIDAD  —  KPIs OPERATIVOS','','','','','','']);
+  aoa_dash.push([`Actualizado: ${today}  |  Generado por: Telamon Inspector v1.0`,'','','','','','']);
+  aoa_dash.push(['']);
+  aoa_dash.push(['KPI','VALOR','','RESUMEN POR ESTATUS','CANTIDAD','','']);
+  aoa_dash.push(['Total Inspeccionados', total,'','OK (Sin Falla)', okCount,'','']);
+  aoa_dash.push(['Total Part Numbers', totalPNs,'','Con Falla Activa', failCount,'','']);
+  aoa_dash.push(['Sin Falla (OK)', okCount,'','Solucionados', solvedCount,'','']);
+  aoa_dash.push(['Con Falla Activa', failCount,'','First Pass Yield', fpy,'','']);
+  aoa_dash.push(['Solucionados', solvedCount,'','Testers Activos', testersSet.length,'','']);
+  aoa_dash.push(['First Pass Yield', fpy,'','','','','']);
+  aoa_dash.push(['']);
+  aoa_dash.push(['PRODUCCIÓN POR TESTER','TOTAL','OK','CON FALLA','SOLUCIONADO','% OK','']);
+  Object.entries(tStats).sort((a,b)=>b[1].total-a[1].total).forEach(([t,s])=>{
+    const pct = s.total>0 ? (s.ok/s.total*100).toFixed(1)+'%' : '0.0%';
+    aoa_dash.push([t, s.total, s.ok, s.fail, s.solved, pct,'']);
+  });
+  aoa_dash.push(['']);
+  const fRow = aoa_dash.length;
+  aoa_dash.push(['TOP FALLAS DETECTADAS','OCURRENCIAS','% DEL TOTAL','','','','']);
+  failSorted.slice(0,10).forEach(([f,c])=>{
+    const pct = total>0 ? (c/total*100).toFixed(1)+'%' : '0%';
+    aoa_dash.push([f, c, pct,'','','','']);
+  });
+  if(failSorted.length===0) aoa_dash.push(['Sin fallas registradas','—','—','','','','']);
+
+  const ws_dash = XLSX.utils.aoa_to_sheet(aoa_dash);
+  ws_dash['!cols'] = [{wch:30},{wch:14},{wch:4},{wch:28},{wch:14},{wch:12},{wch:4}];
+  ws_dash['!merges'] = [
+    {s:{r:0,c:0},e:{r:0,c:6}},{s:{r:1,c:0},e:{r:1,c:6}}
+  ];
+  if(ws_dash['A1']) ws_dash['A1'].s = titleStyle();
+  if(ws_dash['A2']) ws_dash['A2'].s = { font:{name:'Arial',sz:9,italic:true,color:{rgb:C.gray}}, fill:{patternType:'solid',fgColor:{rgb:C.grayLt}}, alignment:{horizontal:'center'} };
+
+  // KPI section headers
+  ['A4','B4','D4','E4'].forEach(ref=>{ if(ws_dash[ref]) ws_dash[ref].s=hdr(C.white,C.hdr2); });
+  // KPI data rows
+  for(let ri=4;ri<=9;ri++){
+    const bg=(ri%2===0)?C.white:'F9FAFB';
+    ['A','B'].forEach(col=>{
+      const ref=col+(ri+1); if(ws_dash[ref]) ws_dash[ref].s=cell('111827',bg,col==='A',10,'left',false);
+    });
+    ['D','E'].forEach(col=>{
+      const ref=col+(ri+1); if(!ws_dash[ref]) return;
+      const val = ws_dash[ref].v;
+      let fg='111827', bg2=bg;
+      if(col==='E'){
+        const v=String(val||'');
+        if(ri===4) {fg=C.green;bg2=C.greenLt;}
+        else if(ri===5) {fg=C.red;bg2=C.redLt;}
+        else if(ri===6) {fg=C.blue;bg2=C.blueLt;}
+        else if(ri===7) {fg=C.amber;bg2=C.amberLt;}
+      }
+      ws_dash[ref].s=cell(fg,bg2,col==='E',10,col==='E'?'center':'left',false);
+    });
+  }
+
+  // Tester table headers
+  const thRow = 11;
+  ['A','B','C','D','E','F'].forEach(col=>{
+    const ref=col+(thRow+1); if(ws_dash[ref]) ws_dash[ref].s=hdr(C.white,C.blue);
+  });
+  for(let ri=thRow+1; ri<fRow-1; ri++){
+    const bg=(ri%2===0)?C.white:'F9FAFB';
+    const pct=parseFloat(String(aoa_dash[ri][5]||'0'));
+    const pfg = pct>=90?C.green:pct>=80?C.amber:C.red;
+    const pbg = pct>=90?C.greenLt:pct>=80?C.amberLt:C.redLt;
+    ['A','B','C','D','E','F'].forEach((col,ci)=>{
+      const ref=col+(ri+1); if(!ws_dash[ref]) return;
+      if(ci===5) ws_dash[ref].s=cell(pfg,pbg,true,10,'center',false);
+      else ws_dash[ref].s=cell('111827',bg,ci===0,9,ci===0?'left':'center',false);
+    });
+  }
+
+  // Falla table headers
+  ['A','B','C'].forEach(col=>{
+    const ref=col+(fRow+1); if(ws_dash[ref]) ws_dash[ref].s=hdr(C.white,C.red);
+  });
+  for(let ri=fRow+1; ri<aoa_dash.length; ri++){
+    const bg=(ri%2===0)?'FFF5F5':C.white;
+    if(ws_dash[`A${ri+1}`]) ws_dash[`A${ri+1}`].s=cell('111827',bg,false,9,'left',true);
+    if(ws_dash[`B${ri+1}`]) ws_dash[`B${ri+1}`].s=cell(C.red,C.redLt,true,10,'center',false);
+    if(ws_dash[`C${ri+1}`]) ws_dash[`C${ri+1}`].s=cell(C.amber,C.amberLt,true,9,'center',false);
+  }
+  XLSX.utils.book_append_sheet(wb, ws_dash, 'DASHBOARD');
+
+  // ════════════════════════════════════════
+  // HOJA 4: COMPONENTES (catálogo completo)
+  // ════════════════════════════════════════
+  const COMPONENTS_DICT_XL = {
+    'Cinta (Tape) - Material': ['PVC','Tela / PET (Cloth)','Fleece / PE (Vellón)','Aluminio','Teflón (PTFE)','Mastic','Kapton','Fibra de Vidrio'],
+    'Cinta (Tape) - Aplicación': ['Espiral / Traslape (Half-lap)','Punteada (Spot Tape)','Continua (Corrida)','Longitudinal','Espaciada (Open gap)','Bandera (Flag)'],
+    'Tubo / Cubierta': ['Corrugado Abierto (Slit Loom)','Corrugado Cerrado','Manga Térmica (Heat Shrink)','Tubo PVC','Grommet (Pasamuros)'],
+    'Protección': ['Malla (Braided Sleeve)','Esponja (Foam)','Cinta Anti-Ruido (Anti-Rattle)'],
+    'Sujeción (Clips/Ties)': ['Clip (Fir Tree/Rosebud)','Clip Edge','Clip con Corbata','Corbata (Cable Tie)','Canaleta (Channel)'],
+    'Cable': ['Convencional (TXL/FLRY)','Par Trenzado','Blindado (Shielded)','Coaxial','Cable de Batería'],
+    'Conector': ['Sellado (Sealed)','No Sellado','Inline (Conector-Conector)','Dummy Plug (Tapón)'],
+    'Accesorios Conector': ['TPA','CPA','PLR','Backshell / Wire Dress','Cavity Plug (Sello ciego)'],
+    'Terminal': ['Pin (Macho)','Socket (Hembra)','Terminal de Ojillo (Tierra)','Espada','IDC'],
+    'Empalme (Splice)': ['Soldadura Ultrasónica','Crimp Splice','Solder Sleeve'],
+    'Componentes Especiales': ['Relay','Fusible','Diodo / Resistencia','Ferrita','Inflador (Airbag)','Sensor','Barcode / QR Code'],
+  };
+  const aoa_comp = [];
+  aoa_comp.push(['CATÁLOGO DE COMPONENTES — WIRE HARNESS','','']);
+  aoa_comp.push(['CATEGORÍA / COMPONENTE','SUBTIPOS REGISTRADOS','# SUBTIPOS']);
+  Object.entries(COMPONENTS_DICT_XL).forEach(([cat, subs],i)=>{
+    aoa_comp.push([cat, subs.join(' · '), subs.length]);
+  });
+  const ws_comp = XLSX.utils.aoa_to_sheet(aoa_comp);
+  ws_comp['!cols'] = [{wch:30},{wch:72},{wch:10}];
+  ws_comp['!merges'] = [{s:{r:0,c:0},e:{r:0,c:2}}];
+  if(ws_comp['A1']) ws_comp['A1'].s = titleStyle();
+  ['A2','B2','C2'].forEach(ref=>{ if(ws_comp[ref]) ws_comp[ref].s=hdr(C.white,C.blue); });
+  for(let i=0;i<Object.keys(COMPONENTS_DICT_XL).length;i++){
+    const bg=i%2===0?C.white:'EFF6FF';
+    if(ws_comp[`A${i+3}`]) ws_comp[`A${i+3}`].s=cell(C.dark,bg,true,10,'left',false);
+    if(ws_comp[`B${i+3}`]) ws_comp[`B${i+3}`].s=cell(C.gray,bg,false,9,'left',true);
+    if(ws_comp[`C${i+3}`]) ws_comp[`C${i+3}`].s=cell(C.blue,C.blueLt,true,10,'center',false);
+  }
+  XLSX.utils.book_append_sheet(wb, ws_comp, 'COMPONENTES');
+
+  // ════════════════════════════════════════
+  // HOJA 5: PRUEBAS (catálogo completo)
+  // ════════════════════════════════════════
+  const TESTS_XL = [
+    ['Continuidad Eléctrica','Eléctrica','Verifica la conductividad de todos los circuitos del arnés'],
+    ['Cortocircuito / Aislamiento','Eléctrica','Detecta cortocircuitos entre circuitos y fallas de aislamiento'],
+    ['Caída de Tensión','Eléctrica','Mide la resistencia de empalmes y terminales bajo corriente'],
+    ['Hipot (Dieléctrico/Alta Tensión)','Eléctrica','Prueba de rigidez dieléctrica a alta tensión'],
+    ['Push-Pull (Extracción)','Mecánica','Fuerza de extracción de terminal en conector (retención)'],
+    ['Push-Out Force (Empuje Terminal)','Mecánica','Fuerza de empuje axial de terminal en cavidad'],
+    ['Prueba de Fuga (Leak Test)','Sellado','Verifica integridad de sellado en conectores contra humedad'],
+    ['Verificación Dimensional / Ruteo','Dimensional','Comprobación de longitudes, ruteo y tolerancias de montaje'],
+    ['Detección de Candados (TPA/CPA)','Visual/Sensor','Presencia y posición correcta de TPA/CPA/PLR'],
+    ['Detección de Clips / Sujeción','Visual/Sensor','Presencia y orientación correcta de clips y corbatas'],
+    ['Verificación de Color (Visión)','Visual/Sensor','Sistema de visión para verificación de color de cables/conectores'],
+    ['Presencia de Cinta / Spot Tape','Visual/Sensor','Detección de encintado requerido en posiciones críticas'],
+    ['Alineación de Terminal','Dimensional','Verificación de posición y alineación de terminales en cavidad'],
+    ['Escaneo Barcode','Trazabilidad','Lectura y validación de código de barras / QR del arnés'],
+    ['Poka-Yoke','Error Proofing','Prevención de errores por diseño de fixture y sistema'],
+  ];
+  const TYPE_COLORS = {
+    'Eléctrica': {fg:C.blue,bg:C.blueLt}, 'Mecánica': {fg:C.green,bg:C.greenLt},
+    'Sellado': {fg:C.amber,bg:C.amberLt}, 'Dimensional': {fg:'7C3AED',bg:'EDE9FE'},
+    'Visual/Sensor': {fg:'0891B2',bg:'E0F2FE'}, 'Trazabilidad': {fg:C.gray,bg:C.grayLt},
+    'Error Proofing': {fg:C.red,bg:C.redLt}
+  };
+  const aoa_tests = [];
+  aoa_tests.push(['CATÁLOGO DE PRUEBAS ELÉCTRICAS Y MECÁNICAS','','','']);
+  aoa_tests.push(['#','PRUEBA','TIPO','DESCRIPCIÓN']);
+  TESTS_XL.forEach(([name,type,desc],i)=>{ aoa_tests.push([i+1,name,type,desc]); });
+  const ws_tests = XLSX.utils.aoa_to_sheet(aoa_tests);
+  ws_tests['!cols'] = [{wch:5},{wch:35},{wch:16},{wch:55}];
+  ws_tests['!merges'] = [{s:{r:0,c:0},e:{r:0,c:3}}];
+  if(ws_tests['A1']) ws_tests['A1'].s = titleStyle();
+  ['A2','B2','C2','D2'].forEach(ref=>{ if(ws_tests[ref]) ws_tests[ref].s=hdr(C.white,C.blue); });
+  TESTS_XL.forEach(([name,type,desc],i)=>{
+    const r=i+3; const bg=i%2===0?C.white:'F9FAFB';
+    const tc=TYPE_COLORS[type]||{fg:C.gray,bg:C.grayLt};
+    if(ws_tests[`A${r}`]) ws_tests[`A${r}`].s=cell(C.white,C.blue,true,9,'center',false);
+    if(ws_tests[`B${r}`]) ws_tests[`B${r}`].s=cell(C.dark,bg,true,10,'left',false);
+    if(ws_tests[`C${r}`]) ws_tests[`C${r}`].s=cell(tc.fg,tc.bg,true,9,'center',false);
+    if(ws_tests[`D${r}`]) ws_tests[`D${r}`].s=cell(C.gray,bg,false,9,'left',true);
+  });
+  XLSX.utils.book_append_sheet(wb, ws_tests, 'PRUEBAS');
+
+  // ════════════════════════════════════════
+  // HOJA 6: FALLAS (catálogo + frecuencia real)
+  // ════════════════════════════════════════
+  const FAILURES_FULL = [
+    ['Terminal no insertada (Push-back)','Ensamble de Terminal'],
+    ['Cables invertidos (Miswire)','Error de Ruteo'],
+    ['Circuito abierto / Sin continuidad','Eléctrica'],
+    ['Cortocircuito','Eléctrica'],
+    ['Falta de componente (Clip, Sello, TPA)','Componente Faltante'],
+    ['Daño en aislamiento / Cobre expuesto','Daño Físico'],
+    ['Conector dañado / Roto','Daño Físico'],
+    ['Ruteo incorrecto / Longitud','Error de Ruteo'],
+    ['Encintado defectuoso / Faltante','Encintado'],
+    ['Terminal dañada / Deformada','Daño Físico'],
+  ];
+  const totalFails = Object.values(failFreq).reduce((a,b)=>a+b,0)||1;
+  const aoa_fallas = [];
+  aoa_fallas.push(['CATÁLOGO Y ANÁLISIS DE FALLAS — WIRE HARNESS','','','','']);
+  aoa_fallas.push(['#','TIPO DE FALLA','CATEGORÍA','OCURRENCIAS','% DEL TOTAL']);
+  FAILURES_FULL.forEach(([name,cat],i)=>{
+    const cnt = Object.entries(failFreq).find(([k])=>k.toLowerCase().includes(name.toLowerCase().split(' ')[0]))?.[1] || 0;
+    const pct = cnt>0 ? (cnt/totalFails*100).toFixed(1)+'%' : '0.0%';
+    aoa_fallas.push([i+1, name, cat, cnt||0, cnt>0?pct:'—']);
+  });
+  // Add any extra failures from real data not in catalog
+  Object.entries(failFreq).forEach(([f,c])=>{
+    const inCatalog = FAILURES_FULL.some(([name])=>f.toLowerCase().includes(name.toLowerCase().split(' ')[0]));
+    if(!inCatalog) aoa_fallas.push(['*', f, 'Otro', c, (c/totalFails*100).toFixed(1)+'%']);
+  });
+
+  const ws_fallas = XLSX.utils.aoa_to_sheet(aoa_fallas);
+  ws_fallas['!cols'] = [{wch:5},{wch:40},{wch:22},{wch:14},{wch:12}];
+  ws_fallas['!merges'] = [{s:{r:0,c:0},e:{r:0,c:4}}];
+  if(ws_fallas['A1']) ws_fallas['A1'].s = titleStyle();
+  ['A2','B2','C2','D2','E2'].forEach(ref=>{ if(ws_fallas[ref]) ws_fallas[ref].s=hdr(C.white,C.red); });
+  for(let i=0;i<aoa_fallas.length-2;i++){
+    const r=i+3; const bg=i%2===0?C.white:'FFF5F5';
+    const cnt=aoa_fallas[r-1]?.[3]||0;
+    if(ws_fallas[`A${r}`]) ws_fallas[`A${r}`].s=cell(C.white,C.red,true,9,'center',false);
+    if(ws_fallas[`B${r}`]) ws_fallas[`B${r}`].s=cell(C.dark,bg,cnt>0,10,'left',false);
+    if(ws_fallas[`C${r}`]) ws_fallas[`C${r}`].s=cell(C.gray,bg,false,9,'center',false);
+    if(ws_fallas[`D${r}`]) ws_fallas[`D${r}`].s=cell(cnt>0?C.red:C.gray, cnt>0?C.redLt:bg, true,10,'center',false);
+    if(ws_fallas[`E${r}`]) ws_fallas[`E${r}`].s=cell(C.amber,bg,false,9,'center',false);
+  }
+  XLSX.utils.book_append_sheet(wb, ws_fallas, 'FALLAS');
+
+  // ── WRITE FILE ──
+  XLSX.writeFile(wb, `Telamon_Registro_${todayISO}.xlsx`);
+  showToast(`✓ Excel exportado — ${records.length} registros, 6 hojas`);
+}
+
+// ── IMPORTAR ──
+function importRecords() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const imported = JSON.parse(ev.target.result);
+        if (!Array.isArray(imported)) throw new Error();
+        const existingIds = new Set(records.map(r => r.id));
+        const nuevos = imported.filter(r => !existingIds.has(r.id));
+        records = [...nuevos, ...records];
+        records.sort((a,b) => b.id - a.id);
+        saveRecords();
+        renderHistory();
+        showToast(`${nuevos.length} registros nuevos importados`);
+      } catch { showToast('Archivo inválido o corrupto', true); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+// ── HISTORY ──
+function renderHistory() {
+
+  // TOTAL DE PART NUMBERS
+  const totalPartNumbers = records.reduce((acc, r) => {
+    return acc + (r.parts ? r.parts.length : 1);
+  }, 0);
+
+  // REGISTROS CON FALLA
+  const withFail = records.reduce((acc, r) => {
+    const hasFail =
+      r.fail &&
+      r.fail.toLowerCase() !== 'n/a' &&
+      r.fail.trim() !== '' &&
+      !r.solved;
+
+    return acc + ((r.parts ? r.parts.length : 1) * (hasFail ? 1 : 0));
+  }, 0);
+
+  // REGISTROS SIN FALLA
+  const ok = totalPartNumbers - withFail;
+
+  // TESTERS ÚNICOS
+  const testers = new Set(records.map(r => r.tester)).size;
+
+  // TOTAL PART NUMBERS
+  const totalPN = totalPartNumbers;
+
+  document.getElementById('stats-bar').innerHTML = `
+    <div class="stat-box">
+      <div class="stat-num" style="color:var(--accent2)">
+        ${totalPartNumbers}
+      </div>
+      <div class="stat-label">Total Registrados</div>
+    </div>
+
+    <div class="stat-box">
+      <div class="stat-num" style="color:var(--green)">
+        ${ok}
+      </div>
+      <div class="stat-label">Sin Falla</div>
+    </div>
+
+    <div class="stat-box">
+      <div class="stat-num" style="color:var(--red)">
+        ${withFail}
+      </div>
+      <div class="stat-label">Con Falla</div>
+    </div>
+
+    <div class="stat-box">
+      <div class="stat-num" style="color:var(--accent2)">
+        ${testers}
+      </div>
+      <div class="stat-label">Testers</div>
+    </div>
+
+    <div class="stat-box">
+      <div class="stat-num" style="color:#f59e0b">
+        ${totalPN}
+      </div>
+      <div class="stat-label">Part Number</div>
+    </div>
+  `;
+
+  const el = document.getElementById('history-list');
+  if (records.length === 0) {
+    el.innerHTML = `<div class="history-empty">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <p style="font-size:16px;font-weight:600;margin-bottom:8px">Sin registros aún</p>
+      <p style="font-size:13px">Captura el primer registro desde la pestaña Captura</p>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = records.map((r, idx) => {
+    const hasFail = r.fail && r.fail.toLowerCase() !== 'n/a' && r.fail.trim() !== '';
+    const dateStr = new Date(r.date+'T12:00:00').toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'});
+
+    let statusPill = '';
+    if (hasFail && !r.solved) {
+      statusPill = `<span class="status-pill pill-fail">Con Falla</span>`;
+    } else if (hasFail && r.solved) {
+      statusPill = `<span class="status-pill" style="background:#dbeafe; color:var(--accent2);">Solucionado</span>`;
+    } else {
+      statusPill = `<span class="status-pill pill-ok">OK</span>`;
+    }
+
+    // Support both new (parts[]) and legacy (components/tests) format
+    const partsHtml = (r.parts || [{partnum: r.partnum, components: r.components, tests: r.tests}]).map(p => {
+      const compKeys = p.components ? Object.keys(p.components) : [];
+      const compTags = compKeys.map(c => {
+        const st = p.components && p.components[c];
+        if (!st) return '';
+        const cls = st.yes ? 'yes' : st.no ? 'no' : '';
+        const subText = (st.subtypes && st.subtypes.length > 0) ? st.subtypes.join(', ') : st.subtype;
+        const lbl = st.yes ? (subText ? `SÍ (${subText})` : 'SÍ') : st.no ? 'NO' : '';
+        if (!lbl) return '';
+        return `<span class="comp-tag ${cls}">${c.split('/')[0].trim()}: ${lbl}</span>`;
+      }).join('');
+      const activTests = TESTS.filter(t => p.tests && p.tests[t]).join(', ') || '—';
+      return `
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;">
+          <div style="font-size:12px;font-weight:700;color:var(--accent2);font-family:var(--mono);margin-bottom:8px;">${p.partnum}</div>
+          <div class="comp-summary" style="margin-bottom:8px;">${compTags||'<span class="comp-tag">Sin selección</span>'}</div>
+          <div style="font-size:11px;color:var(--muted);"><span style="font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Pruebas:</span> ${activTests}</div>
+        </div>`;
+    }).join('');
+
+    return `
+    <div class="record-card">
+      <div class="record-head" onclick="toggleRecord(${idx})">
+        <div class="record-meta">
+          <span class="record-id">#${String(r.cell).padStart(3,'0')}</span>
+          <span class="record-part">${r.partnum}</span>
+          <span class="record-date">${dateStr} · ${r.tester}</span>
+        </div>
+        ${statusPill}
+      </div>
+      <div class="record-body" id="rec-${idx}">
+        <div class="detail-grid">
+          <div class="detail-item"><label>Cell</label><span>${r.cell}</span></div>
+          <div class="detail-item"><label>Slot</label><span>${r.slot||'—'}</span></div>
+          <div class="detail-item"><label>Inspector</label><span>${r.inspector||'—'}</span></div>
+          <div class="detail-item"><label>Cliente</label><span>${r.client||'—'}</span></div>
+          <div class="detail-item"><label>Hora captura</label><span style="font-size:12px">${new Date(r.ts).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})}</span></div>
+        </div>
+        <div class="divider"></div>
+        ${partsHtml}
+        <div class="detail-text-grid" style="margin-top:8px;">
+          <div class="detail-text-box"><label>Falla Detectada</label><p>${r.fail||'—'}</p></div>
+          <div class="detail-text-box"><label>Solución Implementada</label><p>${r.solution||'—'}</p></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn-delete" onclick="deleteRecord(${idx})"> Eliminar registro</button>
+          <button class="btn-edit" onclick="editRecord(${idx})"> Editar registro</button>
+          <button class="btn-history" onclick="toggleHistory(${idx})"> Historial</button>
+          ${hasFail && !r.solved ? `<button class="btn-solve" onclick="markSolved(${idx})">✓ Marcar Solucionado</button>` : ''}
+        </div>
+
+        <div class="history-log" id="history-${idx}" style="display:none;">
+          <div style="font-weight:700;color:var(--accent2);margin-bottom:8px;">Historial de Cambios</div>
+          ${(r.changeHistory || []).map(h => `
+            <div class="history-item">
+              <div><strong>${h.action}</strong> - ${h.date}</div>
+              <div style="color:var(--muted);">${h.detail}</div>
+            </div>
+          `).join('')}
+        </div>
+
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleRecord(idx) {
+  document.getElementById('rec-'+idx).classList.toggle('open');
+}
+function deleteRecord(idx) {
+  if (!confirm('¿Eliminar este registro?')) return;
+  records.splice(idx, 1);
+  saveRecords();
+  renderHistory();
+}
+
+function toggleOtherClient(val) {
+  document.getElementById('f-client-other').style.display = val === 'Otro' ? 'block' : 'none';
+}
+
+// ── UTILS ──
+function clearForm() {
+  document.getElementById('f-cell').value = '';
+  document.getElementById('f-slot').value = '';
+  document.getElementById('f-tester').value = '';
+  document.getElementById('f-solution').value = '';
+  document.getElementById('f-inspector').value = '';
+  document.getElementById('f-client').value = 'AUTOLIV';
+  document.getElementById('f-client-other').value = '';
+  document.getElementById('f-client-other').style.display = 'none';
+  document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  selectedFailures = {};
+  document.getElementById('f-fail-other').value = '';
+  document.getElementById('other-failure-container').style.display = 'none';
+  renderFailures();
+  partBlocks = [];
+  addPartBlock();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+let toastTimer;
+function showToast(msg, error=false) {
+  const t = document.getElementById('toast');
+  t.style.background = error ? 'var(--red)' : 'var(--green)';
+  document.getElementById('toast-msg').textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function switchTab(tab) {
+  document.getElementById('view-form').style.display = tab==='form' ? 'block' : 'none';
+  document.getElementById('view-history').style.display = tab==='history' ? 'block' : 'none';
+  document.getElementById('tab-form').classList.toggle('active', tab==='form');
+  document.getElementById('tab-history').classList.toggle('active', tab==='history');
+  if (tab === 'history') renderHistory();
+}
+
+
+function editRecord(idx) {
+  const record = records[idx];
+
+  const nuevaFalla = prompt(
+    'Editar falla detectada (OK/N/A si fue solucionada):',
+    record.fail || ''
+  );
+
+  if (nuevaFalla === null) return;
+
+  const nuevaSolucion = prompt(
+    'Editar solución implementada:',
+    record.solution || ''
+  );
+
+  if (nuevaSolucion === null) return;
+
+  const fallaAnterior = record.fail || 'SIN FALLA';
+
+  record.fail = nuevaFalla;
+  record.solution = nuevaSolucion;
+
+  if (!record.changeHistory) {
+    record.changeHistory = [];
+  }
+
+  record.changeHistory.unshift({
+    date: new Date().toLocaleString('es-MX'),
+    action: 'EDITADO',
+    detail: 'Cambio de estado: ' + fallaAnterior + ' → ' + nuevaFalla
+  });
+
+  saveRecords();
+  renderHistory();
+  showToast('Registro actualizado correctamente');
+}
+
+function markSolved(idx) {
+  const record = records[idx];
+  const solucion = prompt('Describe la solución implementada para marcar como solucionado:', record.solution || '');
+  if (solucion === null) return;
+
+  record.solved = true;
+  record.solution = solucion;
+  
+  if (!record.changeHistory) record.changeHistory = [];
+  record.changeHistory.unshift({
+    date: new Date().toLocaleString('es-MX'),
+    action: 'SOLUCIONADO',
+    detail: 'Problema solucionado: ' + solucion
+  });
+
+  saveRecords();
+  renderHistory();
+  showToast('Registro marcado como solucionado');
+}
+
+function toggleHistory(idx) {
+  const el = document.getElementById('history-' + idx);
+  if (!el) return;
+
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+
+init();
+
+// ── SERVICE WORKER REGISTRATION ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+</script>
+</body>
+</html>
