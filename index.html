@@ -640,10 +640,13 @@ body {
 .login-hint {
   text-align: center; font-size: 11px; color: var(--muted);
 }
-/* hide admin-only elements for viewers */
+/* hide admin-only elements for non-admins — hidden by default until role assigned */
+.admin-only { display: none !important; }
+body.role-admin .admin-only { display: inline-flex !important; }
 body.role-viewer .admin-only { display: none !important; }
 body.role-checker .admin-only { display: none !important; }
 body.role-viewer #tab-form { display: none !important; }
+body.role-checker #tab-form { display: flex !important; }
 
 
 /* ── EDIT MODAL ── */
