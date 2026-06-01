@@ -645,6 +645,94 @@ body.role-viewer .admin-only { display: none !important; }
 body.role-checker .admin-only { display: none !important; }
 body.role-viewer #tab-form { display: none !important; }
 
+
+/* ── EDIT MODAL ── */
+#edit-modal {
+  position: fixed; inset: 0; background: rgba(15,23,42,0.7);
+  display: none; align-items: flex-start; justify-content: center;
+  z-index: 8000; overflow-y: auto; padding: 20px 12px;
+}
+#edit-modal.open { display: flex; }
+.edit-modal-box {
+  background: var(--bg); border-radius: 12px;
+  width: 100%; max-width: 640px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.4);
+  padding: 0; overflow: hidden;
+}
+.edit-modal-header {
+  background: var(--accent); padding: 18px 22px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.edit-modal-header h3 { color: #fff; font-size: 15px; font-weight: 700; margin: 0; }
+.edit-modal-close {
+  background: none; border: none; color: #94a3b8;
+  font-size: 22px; cursor: pointer; padding: 0; line-height: 1;
+}
+.edit-modal-close:hover { color: #fff; }
+.edit-modal-body { padding: 22px; display: flex; flex-direction: column; gap: 18px; }
+.edit-section-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--muted); margin-bottom: 8px;
+}
+.edit-comp-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+}
+.edit-comp-item {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 8px 10px; cursor: pointer; transition: all 0.15s;
+  background: var(--surface);
+}
+.edit-comp-item.active {
+  border-color: var(--accent2); background: #eff6ff;
+}
+.edit-comp-item .comp-label { font-size: 12px; font-weight: 600; color: var(--text-dark); }
+.edit-comp-item .comp-subs {
+  display: none; margin-top: 6px; flex-wrap: wrap; gap: 4px;
+}
+.edit-comp-item.active .comp-subs { display: flex; }
+.edit-comp-sub {
+  font-size: 10px; padding: 2px 7px; border-radius: 20px;
+  border: 1px solid var(--border); background: #fff; cursor: pointer;
+  color: var(--muted); transition: all 0.12s;
+}
+.edit-comp-sub.active { background: var(--accent2); color: #fff; border-color: var(--accent2); }
+.edit-test-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 5px;
+}
+.edit-test-item {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 7px 10px; font-size: 12px; cursor: pointer;
+  background: var(--surface); color: var(--text-dark); transition: all 0.15s;
+}
+.edit-test-item.active {
+  background: #eff6ff; border-color: var(--accent2); color: var(--accent2); font-weight: 600;
+}
+.edit-fail-grid {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.edit-fail-chip {
+  font-size: 11px; padding: 5px 10px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--surface);
+  cursor: pointer; transition: all 0.15s; color: var(--text-dark);
+}
+.edit-fail-chip.active {
+  background: #fee2e2; border-color: var(--red); color: var(--red); font-weight: 600;
+}
+.edit-modal-footer {
+  padding: 16px 22px; border-top: 1px solid var(--border);
+  display: flex; gap: 10px; justify-content: flex-end;
+}
+.edit-save-btn {
+  background: var(--accent2); color: #fff; border: none;
+  border-radius: var(--radius); padding: 11px 24px;
+  font-size: 14px; font-weight: 700; cursor: pointer; font-family: var(--font);
+}
+.edit-cancel-btn {
+  background: var(--surface); color: var(--muted); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 11px 18px;
+  font-size: 14px; cursor: pointer; font-family: var(--font);
+}
+
 </style>
 
 
@@ -849,6 +937,65 @@ body.role-viewer #tab-form { display: none !important; }
 </div>
 
 <!-- TOAST -->
+
+<!-- EDIT MODAL -->
+<div id="edit-modal">
+  <div class="edit-modal-box">
+    <div class="edit-modal-header">
+      <h3 id="edit-modal-title">✏️ Editar Registro</h3>
+      <button class="edit-modal-close" onclick="closeEditModal()">×</button>
+    </div>
+    <div class="edit-modal-body">
+
+      <!-- Info básica -->
+      <div>
+        <div class="edit-section-title">Información General</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div><label class="form-label">Cell</label><input class="form-input" id="em-cell"></div>
+          <div><label class="form-label">Fecha</label><input class="form-input" type="date" id="em-date"></div>
+          <div><label class="form-label">Slot</label><input class="form-input" id="em-slot"></div>
+          <div><label class="form-label">Tester</label><input class="form-input" id="em-tester"></div>
+          <div><label class="form-label">Cliente</label><input class="form-input" id="em-client"></div>
+          <div><label class="form-label">Inspector</label><input class="form-input" id="em-inspector"></div>
+        </div>
+        <div style="margin-top:10px;"><label class="form-label">Part Number</label><input class="form-input" id="em-partnum"></div>
+      </div>
+
+      <!-- Componentes -->
+      <div>
+        <div class="edit-section-title">Componentes Detectados</div>
+        <div class="edit-comp-grid" id="em-comp-grid"></div>
+      </div>
+
+      <!-- Pruebas -->
+      <div>
+        <div class="edit-section-title">Pruebas Realizadas</div>
+        <div class="edit-test-grid" id="em-test-grid"></div>
+      </div>
+
+      <!-- Fallas -->
+      <div>
+        <div class="edit-section-title">Falla Detectada</div>
+        <div class="edit-fail-grid" id="em-fail-grid"></div>
+        <div style="margin-top:8px;" id="em-fail-other-wrap">
+          <input class="form-input" id="em-fail-other" placeholder="Otra falla (descripción)...">
+        </div>
+      </div>
+
+      <!-- Solución -->
+      <div>
+        <div class="edit-section-title">Solución Implementada</div>
+        <textarea class="form-input" id="em-solution" rows="2" style="resize:vertical;" placeholder="Descripción de la solución..."></textarea>
+      </div>
+
+    </div>
+    <div class="edit-modal-footer">
+      <button class="edit-cancel-btn" onclick="closeEditModal()">Cancelar</button>
+      <button class="edit-save-btn" onclick="saveEditModal()">💾 Guardar Cambios</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast">
   <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
   <span id="toast-msg">Registro guardado</span>
@@ -1893,40 +2040,172 @@ function switchTab(tab) {
 }
 
 
+let _editIdx = null;
+let _emCompState = {};
+let _emTestState = {};
+let _emFailState = {};
+
 function editRecord(idx) {
-  const record = records[idx];
+  _editIdx = idx;
+  const r = records[idx];
 
-  const nuevaFalla = prompt(
-    'Editar falla detectada (OK/N/A si fue solucionada):',
-    record.fail || ''
-  );
+  // ── Fill basic fields ──
+  document.getElementById('em-cell').value      = r.cell || '';
+  document.getElementById('em-date').value      = r.date || '';
+  document.getElementById('em-slot').value      = r.slot || '';
+  document.getElementById('em-tester').value    = r.tester || '';
+  document.getElementById('em-client').value    = r.client || '';
+  document.getElementById('em-inspector').value = r.inspector || '';
+  document.getElementById('em-solution').value  = r.solution || '';
+  document.getElementById('em-partnum').value   = r.parts ? r.parts.map(p=>p.partnum).join(' / ') : (r.partnum||'');
+  document.getElementById('edit-modal-title').textContent = '✏️ Editar Registro — ' + (r.parts?r.parts[0].partnum:r.partnum||'');
 
-  if (nuevaFalla === null) return;
+  // ── Restore comp state from first part block ──
+  const srcComp = (r.parts && r.parts[0]) ? r.parts[0].components : (r.components || {});
+  _emCompState = {};
+  COMPONENTS.forEach(c => {
+    const s = srcComp[c] || { yes: false, subtypes: [] };
+    _emCompState[c] = { yes: !!s.yes, subtypes: Array.isArray(s.subtypes) ? [...s.subtypes] : (s.subtype ? [s.subtype] : []) };
+  });
 
-  const nuevaSolucion = prompt(
-    'Editar solución implementada:',
-    record.solution || ''
-  );
+  // ── Restore test state ──
+  const srcTests = (r.parts && r.parts[0]) ? r.parts[0].tests : (r.tests || {});
+  _emTestState = {};
+  TESTS.forEach(t => { _emTestState[t] = !!(srcTests && srcTests[t]); });
 
-  if (nuevaSolucion === null) return;
+  // ── Restore fail state ──
+  _emFailState = {};
+  const failStr = r.fail || '';
+  const failParts = failStr.split(',').map(s=>s.trim());
+  FAILURES.forEach(f => { _emFailState[f] = failParts.includes(f); });
+  const otherFail = failParts.find(fp => fp.startsWith('Otro:'));
+  document.getElementById('em-fail-other').value = otherFail ? otherFail.replace('Otro:','').trim() : '';
 
-  const fallaAnterior = record.fail || 'SIN FALLA';
+  renderEmComp();
+  renderEmTests();
+  renderEmFails();
 
-  record.fail = nuevaFalla;
-  record.solution = nuevaSolucion;
+  document.getElementById('edit-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
 
-  if (!record.changeHistory) {
-    record.changeHistory = [];
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+  document.body.style.overflow = '';
+  _editIdx = null;
+}
+
+function renderEmComp() {
+  const grid = document.getElementById('em-comp-grid');
+  grid.innerHTML = '';
+  COMPONENTS.forEach(c => {
+    const state = _emCompState[c];
+    const subs = COMPONENTS_DICT[c] || [];
+    const item = document.createElement('div');
+    item.className = 'edit-comp-item' + (state.yes ? ' active' : '');
+
+    const label = document.createElement('div');
+    label.className = 'comp-label';
+    label.textContent = c;
+    item.appendChild(label);
+
+    if (subs.length > 0) {
+      const subsDiv = document.createElement('div');
+      subsDiv.className = 'comp-subs';
+      subs.forEach(s => {
+        const chip = document.createElement('span');
+        chip.className = 'edit-comp-sub' + (state.subtypes.includes(s) ? ' active' : '');
+        chip.textContent = s;
+        chip.onclick = (e) => {
+          e.stopPropagation();
+          if (!_emCompState[c].yes) { _emCompState[c].yes = true; }
+          const si = _emCompState[c].subtypes.indexOf(s);
+          if (si >= 0) _emCompState[c].subtypes.splice(si, 1);
+          else _emCompState[c].subtypes.push(s);
+          renderEmComp();
+        };
+        subsDiv.appendChild(chip);
+      });
+      item.appendChild(subsDiv);
+    }
+
+    item.onclick = () => {
+      _emCompState[c].yes = !_emCompState[c].yes;
+      if (!_emCompState[c].yes) _emCompState[c].subtypes = [];
+      renderEmComp();
+    };
+    grid.appendChild(item);
+  });
+}
+
+function renderEmTests() {
+  const grid = document.getElementById('em-test-grid');
+  grid.innerHTML = '';
+  TESTS.forEach(t => {
+    const item = document.createElement('div');
+    item.className = 'edit-test-item' + (_emTestState[t] ? ' active' : '');
+    item.textContent = t;
+    item.onclick = () => { _emTestState[t] = !_emTestState[t]; renderEmTests(); };
+    grid.appendChild(item);
+  });
+}
+
+function renderEmFails() {
+  const grid = document.getElementById('em-fail-grid');
+  grid.innerHTML = '';
+  [...FAILURES, 'Otro'].forEach(f => {
+    const chip = document.createElement('span');
+    chip.className = 'edit-fail-chip' + (_emFailState[f] ? ' active' : '');
+    chip.textContent = f;
+    chip.onclick = () => { _emFailState[f] = !_emFailState[f]; renderEmFails(); };
+    grid.appendChild(chip);
+  });
+  document.getElementById('em-fail-other-wrap').style.display = _emFailState['Otro'] ? 'block' : 'none';
+}
+
+function saveEditModal() {
+  if (_editIdx === null) return;
+  const record = records[_editIdx];
+
+  // Basic fields
+  record.cell      = document.getElementById('em-cell').value.trim();
+  record.date      = document.getElementById('em-date').value;
+  record.slot      = document.getElementById('em-slot').value.trim();
+  record.tester    = document.getElementById('em-tester').value.trim();
+  record.client    = document.getElementById('em-client').value.trim();
+  record.inspector = document.getElementById('em-inspector').value.trim();
+  record.solution  = document.getElementById('em-solution').value.trim();
+
+  // Falla
+  let fail = FAILURES.filter(f => _emFailState[f]).join(', ');
+  if (_emFailState['Otro']) {
+    const ov = document.getElementById('em-fail-other').value.trim();
+    fail += (fail ? ', ' : '') + (ov ? 'Otro: ' + ov : 'Otro');
   }
+  if (!fail) fail = 'N/A';
+  record.fail = fail;
+  record.solved = fail !== 'N/A' && record.solution !== '' && record.solution.toLowerCase() !== 'n/a';
 
+  // Update components and tests in all part blocks
+  if (record.parts && record.parts.length > 0) {
+    record.parts.forEach(p => {
+      p.components = JSON.parse(JSON.stringify(_emCompState));
+      p.tests = JSON.parse(JSON.stringify(_emTestState));
+    });
+  }
+  record.components = JSON.parse(JSON.stringify(_emCompState));
+  record.tests = JSON.parse(JSON.stringify(_emTestState));
+
+  if (!record.changeHistory) record.changeHistory = [];
   record.changeHistory.unshift({
     date: new Date().toLocaleString('es-MX'),
     action: 'EDITADO',
-    detail: 'Cambio de estado: ' + fallaAnterior + ' → ' + nuevaFalla
+    detail: 'Registro editado — Falla: ' + fail
   });
 
   saveRecords();
   saveToFirebase(record);
+  closeEditModal();
   renderHistory();
   showToast('Registro actualizado correctamente');
 }
