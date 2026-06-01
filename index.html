@@ -789,37 +789,6 @@ body.role-papoi .papoi-only { display: inline-flex !important; }
   font-size: 14px; cursor: pointer; font-family: var(--font);
 }
 
-
-/* ── TIPO DE DEFECTO ── */
-.defect-cat {
-  border: 1px solid var(--border); border-radius: var(--radius);
-  margin-bottom: 10px; overflow: hidden;
-}
-.defect-cat-head {
-  padding: 10px 12px; font-size: 12px; font-weight: 700;
-  display: flex; align-items: center; gap: 8px; cursor: pointer;
-  user-select: none;
-}
-.defect-cat-head.det { background: #fef3c7; color: #92400e; }
-.defect-cat-head.op  { background: #dbeafe; color: #1e40af; }
-.defect-cat-head .dot { width: 9px; height: 9px; border-radius: 50%; }
-.defect-cat-head.det .dot { background: #f59e0b; }
-.defect-cat-head.op .dot  { background: #2563eb; }
-.defect-cat-head .count {
-  margin-left: auto; font-size: 10px; background: rgba(0,0,0,0.12);
-  padding: 1px 8px; border-radius: 20px;
-}
-.defect-subs {
-  padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 6px;
-}
-.defect-sub {
-  font-size: 11px; padding: 5px 10px; border-radius: 20px;
-  border: 1px solid var(--border); background: #fff; cursor: pointer;
-  color: var(--muted); transition: all 0.12s;
-}
-.defect-sub.active.det { background: #f59e0b; color: #fff; border-color: #f59e0b; }
-.defect-sub.active.op  { background: #2563eb; color: #fff; border-color: #2563eb; }
-
 </style>
 
 
@@ -988,13 +957,6 @@ body.role-papoi .papoi-only { display: inline-flex !important; }
         <label>Especificar Otra Falla</label>
         <textarea id="f-fail-other" placeholder="Describe la falla especial..."></textarea>
       </div>
-
-      <!-- TIPO DE DEFECTO SEGMENTADO -->
-      <div class="field" style="margin-bottom:14px;">
-        <label>Tipo de Defecto</label>
-        <div id="defect-type-container"></div>
-      </div>
-
       <div class="field">
         <label>Solución Implementada</label>
         <textarea id="f-solution" placeholder="Describe la solución…&#10;(o N/A)"></textarea>
@@ -1095,12 +1057,6 @@ body.role-papoi .papoi-only { display: inline-flex !important; }
         </div>
       </div>
 
-      <!-- Tipo de Defecto -->
-      <div>
-        <div class="edit-section-title">Tipo de Defecto</div>
-        <div id="em-defect-container"></div>
-      </div>
-
       <!-- Solución -->
       <div>
         <div class="edit-section-title">Solución Implementada</div>
@@ -1169,37 +1125,11 @@ const FAILURES = [
   'Terminal dañada / Deformada'
 ];
 
-// ── TIPOS DE DEFECTO (segmentado) ──
-const DEFECT_TYPES = {
-  'Defecto de Detección (Tester)': [
-    'Falso positivo (marca falla sin haberla)',
-    'Falso negativo (no detecta falla real)',
-    'Sensor mal calibrado',
-    'Fixture/Pinза desgastada',
-    'Programa/Software del tester desactualizado',
-    'Lectura intermitente',
-    'Falla de comunicación del tester',
-    'Contacto sucio en fixture'
-  ],
-  'Defecto de Operador': [
-    'Montaje incorrecto del arnés',
-    'Conector mal asentado',
-    'Terminal mal insertada por operador',
-    'Componente omitido',
-    'Ruteo incorrecto',
-    'Escaneo de barcode erróneo',
-    'No siguió instrucción de trabajo',
-    'Arnés colocado en fixture equivocado'
-  ]
-};
-const DEFECT_CATEGORIES = Object.keys(DEFECT_TYPES);
-
 // ── STATE ──
 // partBlocks: [{ partnum, compState:{}, testState:{} }, ...]
 let partBlocks = [];
 let records = [];
 let selectedFailures = {};
-let selectedDefects = {}; // { subDefect: true }
 
 // ── INIT ──
 function init() {
@@ -1210,7 +1140,6 @@ function init() {
   loadRecords();
   addPartBlock(); // start with one block
   renderFailures();
-  renderDefects();
 }
 
 // ── PART BLOCK ──
@@ -1370,7 +1299,6 @@ function renderFailures() {
         document.getElementById('other-failure-container').style.display = selectedFailures[f] ? 'block' : 'none';
       }
       renderFailures();
-  renderDefects();
     };
     item.innerHTML = `
       <div class="check-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
@@ -1378,48 +1306,6 @@ function renderFailures() {
     `;
     el.appendChild(item);
   });
-}
-
-// ── RENDER DEFECT TYPES ──
-function renderDefects() {
-  const cont = document.getElementById('defect-type-container');
-  if (!cont) return;
-  cont.innerHTML = '';
-  DEFECT_CATEGORIES.forEach((cat, ci) => {
-    const isDet = cat.includes('Detección');
-    const cls = isDet ? 'det' : 'op';
-    const subs = DEFECT_TYPES[cat];
-    const activeCount = subs.filter(s => selectedDefects[s]).length;
-
-    const catDiv = document.createElement('div');
-    catDiv.className = 'defect-cat';
-
-    const head = document.createElement('div');
-    head.className = 'defect-cat-head ' + cls;
-    head.innerHTML = '<span class="dot"></span>' + cat + '<span class="count">' + activeCount + '</span>';
-    catDiv.appendChild(head);
-
-    const subsDiv = document.createElement('div');
-    subsDiv.className = 'defect-subs';
-    subs.forEach(s => {
-      const chip = document.createElement('span');
-      chip.className = 'defect-sub ' + cls + (selectedDefects[s] ? ' active' : '');
-      chip.textContent = s;
-      chip.onclick = () => { selectedDefects[s] = !selectedDefects[s]; renderDefects(); };
-      subsDiv.appendChild(chip);
-    });
-    catDiv.appendChild(subsDiv);
-    cont.appendChild(catDiv);
-  });
-}
-
-// Helper: returns {detection:[...], operator:[...]} from selectedDefects
-function getDefectBreakdown(defectsObj) {
-  const det = [], op = [];
-  if (!defectsObj) return { detection: det, operator: op };
-  DEFECT_TYPES['Defecto de Detección (Tester)'].forEach(s => { if (defectsObj[s]) det.push(s); });
-  DEFECT_TYPES['Defecto de Operador'].forEach(s => { if (defectsObj[s]) op.push(s); });
-  return { detection: det, operator: op };
 }
 
 // ── SUBMIT ──
@@ -1481,15 +1367,10 @@ function submitForm() {
 
   const isSolved = (fail !== 'N/A' && solution !== '' && solution.toLowerCase() !== 'n/a');
 
-  const defectBreakdown = getDefectBreakdown(selectedDefects);
-
   const record = {
     id: Date.now(),
     cell, date, slot, client, tester, fail, solution, inspector,
     solved: isSolved,
-    defects: JSON.parse(JSON.stringify(selectedDefects)),
-    defectDetection: defectBreakdown.detection,
-    defectOperator: defectBreakdown.operator,
     partnum: validBlocks.map(b => b.partnum).join(' / '),
     parts: validBlocks.map(b => ({
       partnum: b.partnum,
@@ -1669,7 +1550,7 @@ function exportExcel() {
   const REG_HEADERS = [
     'ID','FECHA','HORA','TESTER/CELL','SLOT','INSPECTOR','CLIENTE',
     'PART NUMBER','COMPONENTES DETECTADOS','PRUEBAS REALIZADAS',
-    'FALLA DETECTADA','DEFECTO DETECCIÓN (TESTER)','DEFECTO OPERADOR','ESTATUS','SOLUCIÓN IMPLEMENTADA','OBSERVACIONES'
+    'FALLA DETECTADA','ESTATUS','SOLUCIÓN IMPLEMENTADA','OBSERVACIONES'
   ];
 
   const aoa_reg = [];
@@ -1699,14 +1580,12 @@ function exportExcel() {
           }).join(' · ');
       }
       const testStr = p.tests ? TESTS.filter(t => p.tests[t]).join(' · ') : '';
-      const detStr = (r.defectDetection && r.defectDetection.length>0) ? r.defectDetection.join(' · ') : '—';
-      const opStr  = (r.defectOperator && r.defectOperator.length>0) ? r.defectOperator.join(' · ') : '—';
       aoa_reg.push([
         `#${String(idx+1).padStart(3,'0')}`,
         dateStr, timeStr,
         r.cell||'', r.slot||'', r.inspector||'', r.client||'',
         p.partnum||'', compStr, testStr,
-        r.fail||'N/A', detStr, opStr, status, r.solution||'N/A', ''
+        r.fail||'N/A', status, r.solution||'N/A', ''
       ]);
     });
   });
@@ -1714,7 +1593,7 @@ function exportExcel() {
   const ws_reg = XLSX.utils.aoa_to_sheet(aoa_reg);
   ws_reg['!cols'] = [
     {wch:7},{wch:12},{wch:8},{wch:12},{wch:6},{wch:14},{wch:12},
-    {wch:18},{wch:32},{wch:32},{wch:34},{wch:30},{wch:30},{wch:13},{wch:34},{wch:20}
+    {wch:18},{wch:32},{wch:32},{wch:34},{wch:13},{wch:34},{wch:20}
   ];
   ws_reg['!rows'] = [{hpt:28},{hpt:16},{hpt:28}];
   ws_reg['!merges'] = [
@@ -1734,18 +1613,14 @@ function exportExcel() {
   for(let ri=3; ri<aoa_reg.length; ri++){
     const alt = (ri%2===0);
     const bg = alt ? 'F9FAFB' : C.white;
-    const statusVal = aoa_reg[ri][13];
+    const statusVal = aoa_reg[ri][11];
     REG_HEADERS.forEach((_,ci) => {
       const ref = XLSX.utils.encode_cell({r:ri,c:ci});
       if(!ws_reg[ref]) return;
-      if(ci === 13) { // ESTATUS
+      if(ci === 11) { // ESTATUS
         const sc = statusVal==='OK' ? {fg:C.green,bg:C.greenLt} :
                    statusVal==='CON FALLA' ? {fg:C.red,bg:C.redLt} : {fg:C.blue,bg:C.blueLt};
         ws_reg[ref].s = cell(sc.fg, sc.bg, true, 9, 'center', false);
-      } else if(ci === 11) { // DEFECTO DETECCIÓN
-        ws_reg[ref].s = cell(aoa_reg[ri][11]==='—'?C.gray:'92400E', aoa_reg[ri][11]==='—'?bg:'FEF3C7', false, 9, 'left', true);
-      } else if(ci === 12) { // DEFECTO OPERADOR
-        ws_reg[ref].s = cell(aoa_reg[ri][12]==='—'?C.gray:'1E40AF', aoa_reg[ri][12]==='—'?bg:'DBEAFE', false, 9, 'left', true);
       } else if(ci===0){
         ws_reg[ref].s = cell(C.gray, bg, false, 9, 'center', false);
       } else {
@@ -1870,84 +1745,6 @@ function exportExcel() {
     if(ws_dash[`C${ri+1}`]) ws_dash[`C${ri+1}`].s=cell(C.amber,C.amberLt,true,9,'center',false);
   }
   XLSX.utils.book_append_sheet(wb, ws_dash, 'DASHBOARD');
-
-  // ════════════════════════════════════════
-  // HOJA: DEFECTOS (segmentado Detección vs Operador)
-  // ════════════════════════════════════════
-  // Count detection vs operator defects
-  const detCounter = {};
-  const opCounter = {};
-  let totalDet = 0, totalOp = 0;
-  records.forEach(r => {
-    (r.defectDetection||[]).forEach(d => { detCounter[d] = (detCounter[d]||0)+1; totalDet++; });
-    (r.defectOperator||[]).forEach(d => { opCounter[d] = (opCounter[d]||0)+1; totalOp++; });
-  });
-  const totalDefects = totalDet + totalOp || 1;
-
-  const aoa_def = [];
-  aoa_def.push(['TELAMON  |  ANÁLISIS DE DEFECTOS — DETECCIÓN vs OPERADOR','','','','']);
-  aoa_def.push([`Total defectos registrados: ${totalDet+totalOp}  |  Exportado: ${today}`,'','','','']);
-  aoa_def.push(['']);
-
-  // KPI comparison
-  aoa_def.push(['RESUMEN GENERAL','CANTIDAD','% DEL TOTAL','','']);
-  aoa_def.push(['⚙️ Defectos de Detección (Tester)', totalDet, (totalDet/totalDefects*100).toFixed(1)+'%','','']);
-  aoa_def.push(['👤 Defectos de Operador', totalOp, (totalOp/totalDefects*100).toFixed(1)+'%','','']);
-  aoa_def.push(['']);
-
-  // Detection breakdown
-  const defRowStart = aoa_def.length;
-  aoa_def.push(['⚙️ DEFECTOS DE DETECCIÓN (TESTER)','OCURRENCIAS','% DE DETECCIÓN','','']);
-  const detSorted = Object.entries(detCounter).sort((a,b)=>b[1]-a[1]);
-  if (detSorted.length === 0) aoa_def.push(['Sin defectos de detección registrados','—','—','','']);
-  detSorted.forEach(([d,c]) => {
-    aoa_def.push([d, c, (c/(totalDet||1)*100).toFixed(1)+'%','','']);
-  });
-  aoa_def.push(['']);
-
-  // Operator breakdown
-  const opRowStart = aoa_def.length;
-  aoa_def.push(['👤 DEFECTOS DE OPERADOR','OCURRENCIAS','% DE OPERADOR','','']);
-  const opSorted = Object.entries(opCounter).sort((a,b)=>b[1]-a[1]);
-  if (opSorted.length === 0) aoa_def.push(['Sin defectos de operador registrados','—','—','','']);
-  opSorted.forEach(([d,c]) => {
-    aoa_def.push([d, c, (c/(totalOp||1)*100).toFixed(1)+'%','','']);
-  });
-
-  const ws_def = XLSX.utils.aoa_to_sheet(aoa_def);
-  ws_def['!cols'] = [{wch:42},{wch:14},{wch:16},{wch:4},{wch:4}];
-  ws_def['!merges'] = [{s:{r:0,c:0},e:{r:0,c:4}},{s:{r:1,c:0},e:{r:1,c:4}}];
-  if(ws_def['A1']) ws_def['A1'].s = titleStyle();
-  if(ws_def['A2']) ws_def['A2'].s = { font:{name:'Arial',sz:9,italic:true,color:{rgb:C.gray}}, fill:{patternType:'solid',fgColor:{rgb:C.grayLt}}, alignment:{horizontal:'center'} };
-
-  // Summary header (row 3 = idx 3)
-  ['A4','B4','C4'].forEach(ref=>{ if(ws_def[ref]) ws_def[ref].s=hdr(C.white,C.hdr2); });
-  // Det summary row
-  if(ws_def['A5']) ws_def['A5'].s=cell('92400E','FEF3C7',true,10,'left',false);
-  if(ws_def['B5']) ws_def['B5'].s=cell('92400E','FEF3C7',true,11,'center',false);
-  if(ws_def['C5']) ws_def['C5'].s=cell('92400E','FEF3C7',true,10,'center',false);
-  if(ws_def['A6']) ws_def['A6'].s=cell('1E40AF','DBEAFE',true,10,'left',false);
-  if(ws_def['B6']) ws_def['B6'].s=cell('1E40AF','DBEAFE',true,11,'center',false);
-  if(ws_def['C6']) ws_def['C6'].s=cell('1E40AF','DBEAFE',true,10,'center',false);
-
-  // Detection section header
-  ['A','B','C'].forEach(col=>{ const ref=col+(defRowStart+1); if(ws_def[ref]) ws_def[ref].s=hdr(C.white,C.amber); });
-  for(let ri=defRowStart+1; ri<opRowStart-1; ri++){
-    const bg=(ri%2===0)?C.white:'FFFBEB';
-    if(ws_def[`A${ri+1}`]) ws_def[`A${ri+1}`].s=cell('111827',bg,false,9,'left',true);
-    if(ws_def[`B${ri+1}`]) ws_def[`B${ri+1}`].s=cell('92400E','FEF3C7',true,10,'center',false);
-    if(ws_def[`C${ri+1}`]) ws_def[`C${ri+1}`].s=cell('92400E',bg,false,9,'center',false);
-  }
-  // Operator section header
-  ['A','B','C'].forEach(col=>{ const ref=col+(opRowStart+1); if(ws_def[ref]) ws_def[ref].s=hdr(C.white,C.blue); });
-  for(let ri=opRowStart+1; ri<aoa_def.length; ri++){
-    const bg=(ri%2===0)?C.white:'EFF6FF';
-    if(ws_def[`A${ri+1}`]) ws_def[`A${ri+1}`].s=cell('111827',bg,false,9,'left',true);
-    if(ws_def[`B${ri+1}`]) ws_def[`B${ri+1}`].s=cell('1E40AF','DBEAFE',true,10,'center',false);
-    if(ws_def[`C${ri+1}`]) ws_def[`C${ri+1}`].s=cell('1E40AF',bg,false,9,'center',false);
-  }
-
-  XLSX.utils.book_append_sheet(wb, ws_def, 'DEFECTOS');
 
   // ════════════════════════════════════════
   // HOJA 4: COMPONENTES (catálogo completo)
@@ -2238,8 +2035,6 @@ function renderHistory() {
         ${partsHtml}
         <div class="detail-text-grid" style="margin-top:8px;">
           <div class="detail-text-box"><label>Falla Detectada</label><p>${r.fail||'—'}</p></div>
-          ${(r.defectDetection && r.defectDetection.length>0) ? `<div class="detail-text-box" style="border-left:3px solid #f59e0b;"><label style="color:#92400e;">⚙️ Defectos de Detección (Tester)</label><p>${r.defectDetection.join(', ')}</p></div>` : ''}
-          ${(r.defectOperator && r.defectOperator.length>0) ? `<div class="detail-text-box" style="border-left:3px solid #2563eb;"><label style="color:#1e40af;">👤 Defectos de Operador</label><p>${r.defectOperator.join(', ')}</p></div>` : ''}
           <div class="detail-text-box"><label>Solución Implementada</label><p>${r.solution||'—'}</p></div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -2293,7 +2088,6 @@ function clearForm() {
   document.getElementById('f-client-other').style.display = 'none';
   document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
   selectedFailures = {};
-  selectedDefects = {};
   document.getElementById('f-fail-other').value = '';
   document.getElementById('other-failure-container').style.display = 'none';
   renderFailures();
@@ -2326,7 +2120,6 @@ let _editIdx = null;
 let _emCompState = {};
 let _emTestState = {};
 let _emFailState = {};
-let _emDefectState = {};
 
 function editRecord(idx) {
   _editIdx = idx;
@@ -2364,13 +2157,9 @@ function editRecord(idx) {
   const otherFail = failParts.find(fp => fp.startsWith('Otro:'));
   document.getElementById('em-fail-other').value = otherFail ? otherFail.replace('Otro:','').trim() : '';
 
-  // Restore defect state
-  _emDefectState = r.defects ? JSON.parse(JSON.stringify(r.defects)) : {};
-
   renderEmComp();
   renderEmTests();
   renderEmFails();
-  renderEmDefects();
 
   document.getElementById('edit-modal').classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -2450,35 +2239,6 @@ function renderEmFails() {
   document.getElementById('em-fail-other-wrap').style.display = _emFailState['Otro'] ? 'block' : 'none';
 }
 
-function renderEmDefects() {
-  const cont = document.getElementById('em-defect-container');
-  if (!cont) return;
-  cont.innerHTML = '';
-  DEFECT_CATEGORIES.forEach(cat => {
-    const isDet = cat.includes('Detección');
-    const cls = isDet ? 'det' : 'op';
-    const subs = DEFECT_TYPES[cat];
-    const activeCount = subs.filter(s => _emDefectState[s]).length;
-    const catDiv = document.createElement('div');
-    catDiv.className = 'defect-cat';
-    const head = document.createElement('div');
-    head.className = 'defect-cat-head ' + cls;
-    head.innerHTML = '<span class="dot"></span>' + cat + '<span class="count">' + activeCount + '</span>';
-    catDiv.appendChild(head);
-    const subsDiv = document.createElement('div');
-    subsDiv.className = 'defect-subs';
-    subs.forEach(s => {
-      const chip = document.createElement('span');
-      chip.className = 'defect-sub ' + cls + (_emDefectState[s] ? ' active' : '');
-      chip.textContent = s;
-      chip.onclick = () => { _emDefectState[s] = !_emDefectState[s]; renderEmDefects(); };
-      subsDiv.appendChild(chip);
-    });
-    catDiv.appendChild(subsDiv);
-    cont.appendChild(catDiv);
-  });
-}
-
 function saveEditModal() {
   if (_editIdx === null) return;
   const record = records[_editIdx];
@@ -2501,12 +2261,6 @@ function saveEditModal() {
   if (!fail) fail = 'N/A';
   record.fail = fail;
   record.solved = fail !== 'N/A' && record.solution !== '' && record.solution.toLowerCase() !== 'n/a';
-
-  // Persist defects breakdown
-  record.defects = JSON.parse(JSON.stringify(_emDefectState));
-  const _bd = getDefectBreakdown(_emDefectState);
-  record.defectDetection = _bd.detection;
-  record.defectOperator = _bd.operator;
 
   // Update components and tests in all part blocks
   if (record.parts && record.parts.length > 0) {
@@ -2650,10 +2404,6 @@ window.saveEditModal = async function() {
   proposed.fail = fail || 'N/A';
   proposed.components = JSON.parse(JSON.stringify(_emCompState));
   proposed.tests = JSON.parse(JSON.stringify(_emTestState));
-  proposed.defects = JSON.parse(JSON.stringify(_emDefectState));
-  const _pbd = getDefectBreakdown(_emDefectState);
-  proposed.defectDetection = _pbd.detection;
-  proposed.defectOperator = _pbd.operator;
 
   // Compute diff for display
   const diff = {};
