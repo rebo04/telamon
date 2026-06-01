@@ -2481,25 +2481,17 @@ function openApprovalModal() {
         const card = document.createElement('div');
         card.className = 'approval-card';
         const date = new Date(p.requestedAt).toLocaleString('es-MX');
-        card.innerHTML = \`
-          <div class="approval-card-header">
-            <span>✏️ \${p.requestedBy} — PN: \${p.recordPartnum}</span>
-            <span style="font-size:11px;color:#78350f;">\${date}</span>
-          </div>
-          <div class="approval-card-body">
-            \${diffKeys.length > 0 ? diffKeys.map(f => \`
-              <div class="approval-diff-row">
-                <span class="field">\${f}:</span>
-                <span class="old-val">\${p.diff[f].old||'—'}</span>
-                <span>→</span>
-                <span class="new-val">\${p.diff[f].new||'—'}</span>
-              </div>\`).join('') : '<div style="font-size:12px;color:var(--muted);">Cambios en componentes/pruebas</div>'}
-          </div>
-          <div class="approval-actions">
-            <button class="btn-reject" onclick="rejectChange('\${docSnap.id}')">✗ Rechazar</button>
-            <button class="btn-approve" onclick="approveChange('\${docSnap.id}', '\${p.recordId}')">✓ Aprobar</button>
-          </div>
-        \`;
+        var diffHtml = '';
+        if (diffKeys.length > 0) {
+          diffKeys.forEach(function(f) {
+            diffHtml += '<div class="approval-diff-row"><span class="field">' + f + ':</span><span class="old-val">' + (p.diff[f].old||'-') + '</span><span> to </span><span class="new-val">' + (p.diff[f].new||'-') + '</span></div>';
+          });
+        } else {
+          diffHtml = '<div style="font-size:12px;color:var(--muted);">Cambios en componentes/pruebas</div>';
+        }
+        card.innerHTML = '<div class="approval-card-header"><span>PAPOI: ' + p.requestedBy + ' PN: ' + p.recordPartnum + '</span><span style="font-size:11px;color:#78350f;">' + date + '</span></div>'
+          + '<div class="approval-card-body">' + diffHtml + '</div>'
+          + '<div class="approval-actions"><button class="btn-reject" onclick="rejectChange(\'' + docSnap.id + '\')">✗ Rechazar</button><button class="btn-approve" onclick="approveChange(\'' + docSnap.id + '\', \'' + p.recordId + '\')">Aprobar</button></div>';
         list.appendChild(card);
       });
     }
