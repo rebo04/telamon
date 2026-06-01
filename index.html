@@ -2328,7 +2328,7 @@ window._isPapoi = false;
 function applyRole(role) {
   document.body.classList.remove('role-admin','role-checker','role-viewer','role-papoi');
   document.getElementById('login-screen').style.display = 'none';
-  sessionStorage.setItem('tlm_role', role);
+  try { sessionStorage.setItem('tlm_role', role); } catch(e) {}
   window._isAdmin = false; window._isChecker = false; window._isPapoi = false;
   if (role === 'admin') {
     window._isAdmin = true;
@@ -2364,7 +2364,8 @@ function doLogin() {
 }
 
 function checkSession() {
-  const role = sessionStorage.getItem('tlm_role');
+  let role = null;
+  try { role = sessionStorage.getItem('tlm_role'); } catch(e) {}
   if (role) applyRole(role);
 }
 
