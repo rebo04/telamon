@@ -650,6 +650,7 @@ body.role-checker #tab-form { display: flex !important; }
 /* papoi can see history and edit buttons only */
 body.role-papoi .admin-only { display: none !important; }
 body.role-papoi .papoi-only { display: inline-flex !important; }
+body.role-papoi #tab-form { display: flex !important; }
 
 /* pending notification badge */
 #pending-badge {
@@ -1569,6 +1570,27 @@ function submitForm() {
     ]
   };
 
+  // If PAPOI: send as pending NEW record for admin approval
+  if (window._isPapoi) {
+    if (window._firebaseReady) {
+      window._addDoc(window._collection(window._db_ref, 'pendientes'), {
+        type: 'new',
+        recordPartnum: record.partnum || '',
+        proposed: record,
+        diff: {},
+        requestedBy: 'PAPOI',
+        requestedAt: new Date().toISOString(),
+        status: 'pending'
+      }).then(() => {
+        showToast('📤 Registro enviado — esperando aprobación del Admin');
+        clearForm();
+      }).catch(e => showToast('Error al enviar: ' + e.message, true));
+    } else {
+      showToast('Sin conexión a Firebase', true);
+    }
+    return;
+  }
+
   records.unshift(record);
   saveRecords();
   saveToFirebase(record);
@@ -2371,7 +2393,7 @@ function showToast(msg, error=false) {
 }
 
 function switchTab(tab) {
-  if (tab === 'form' && !window._isAdmin && !window._isChecker) tab = 'history';
+  if (tab === 'form' && !window._isAdmin && !window._isChecker && !window._isPapoi) tab = 'history';
   document.getElementById('view-form').style.display = tab==='form' ? 'block' : 'none';
   document.getElementById('view-history').style.display = tab==='history' ? 'block' : 'none';
   document.getElementById('tab-form').classList.toggle('active', tab==='form');
@@ -2646,7 +2668,7 @@ function applyRole(role) {
   } else if (role === 'papoi') {
     window._isPapoi = true;
     document.body.classList.add('role-papoi');
-    switchTab('history');
+    switchTab('form');
   } else {
     document.body.classList.add('role-viewer');
     switchTab('history');
@@ -2797,16 +2819,25 @@ function openApprovalModal() {
         card.className = 'approval-card';
         const date = new Date(p.requestedAt).toLocaleString('es-MX');
         var diffHtml = '';
-        if (diffKeys.length > 0) {
+        var isNew = (p.type === 'new');
+        if (isNew) {
+          var pr = p.proposed || {};
+          diffHtml = '<div class="approval-diff-row"><span class="field">Cell:</span><span class="new-val">' + (pr.cell||'-') + '</span></div>'
+            + '<div class="approval-diff-row"><span class="field">Tester:</span><span class="new-val">' + (pr.tester||'-') + '</span></div>'
+            + '<div class="approval-diff-row"><span class="field">Cliente:</span><span class="new-val">' + (pr.client||'-') + '</span></div>'
+            + '<div class="approval-diff-row"><span class="field">Falla:</span><span class="new-val">' + (pr.fail||'-') + '</span></div>'
+            + '<div class="approval-diff-row"><span class="field">Solución:</span><span class="new-val">' + (pr.solution||'-') + '</span></div>';
+        } else if (diffKeys.length > 0) {
           diffKeys.forEach(function(f) {
             diffHtml += '<div class="approval-diff-row"><span class="field">' + f + ':</span><span class="old-val">' + (p.diff[f].old||'-') + '</span><span> to </span><span class="new-val">' + (p.diff[f].new||'-') + '</span></div>';
           });
         } else {
           diffHtml = '<div style="font-size:12px;color:var(--muted);">Cambios en componentes/pruebas</div>';
         }
-        card.innerHTML = '<div class="approval-card-header"><span>PAPOI: ' + p.requestedBy + ' PN: ' + p.recordPartnum + '</span><span style="font-size:11px;color:#78350f;">' + date + '</span></div>'
+        var badge = isNew ? '🆕 NUEVO REGISTRO' : '✏️ EDICIÓN';
+        card.innerHTML = '<div class="approval-card-header"><span>' + badge + ' — ' + p.requestedBy + ' · PN: ' + p.recordPartnum + '</span><span style="font-size:11px;color:#78350f;">' + date + '</span></div>'
           + '<div class="approval-card-body">' + diffHtml + '</div>'
-          + '<div class="approval-actions"><button class="btn-reject" onclick="rejectChange(\'' + docSnap.id + '\')">✗ Rechazar</button><button class="btn-approve" onclick="approveChange(\'' + docSnap.id + '\', \'' + p.recordId + '\')">Aprobar</button></div>';
+          + '<div class="approval-actions"><button class="btn-reject" onclick="rejectChange(\'' + docSnap.id + '\')">✗ Rechazar</button><button class="btn-approve" onclick="approveChange(\'' + docSnap.id + '\', \'' + (p.recordId||'') + '\')">✓ Aprobar</button></div>';
         list.appendChild(card);
       });
     }
@@ -2826,7 +2857,25 @@ async function approveChange(pendingId, recordId) {
     if (!pendDoc.exists()) return;
     const p = pendDoc.data();
 
-    // Find and update the actual record
+    // ── NEW RECORD from PAPOI ──
+    if (p.type === 'new') {
+      const newRec = p.proposed;
+      newRec.id = Date.now();
+      newRec.ts = new Date().toISOString();
+      if (!newRec.changeHistory) newRec.changeHistory = [];
+      newRec.changeHistory.unshift({ date: new Date().toLocaleString('es-MX'), action: 'APROBADO', detail: 'Registro de PAPOI aprobado por Admin' });
+      delete newRec._firebaseId;
+      records.unshift(newRec);
+      saveRecords();
+      await saveToFirebase(newRec);
+      await window._setDoc(window._doc(window._db_ref, 'pendientes', pendingId), { ...p, status: 'approved' });
+      showToast('✅ Registro nuevo aprobado y guardado');
+      openApprovalModal();
+      renderHistory();
+      return;
+    }
+
+    // Find and update the actual record (EDIT)
     const recIdx = records.findIndex(r => r._firebaseId === recordId || String(r.id) === String(recordId));
     if (recIdx >= 0) {
       const record = records[recIdx];
