@@ -1570,24 +1570,15 @@ function submitForm() {
     ]
   };
 
-  // If PAPOI: send as pending NEW record for admin approval
+  // If PAPOI: save the record LIVE (visible to everyone) but flag it pending for admin
   if (window._isPapoi) {
-    if (window._firebaseReady) {
-      window._addDoc(window._collection(window._db_ref, 'pendientes'), {
-        type: 'new',
-        recordPartnum: record.partnum || '',
-        proposed: record,
-        diff: {},
-        requestedBy: 'PAPOI',
-        requestedAt: new Date().toISOString(),
-        status: 'pending'
-      }).then(() => {
-        showToast('📤 Registro enviado — esperando aprobación del Admin');
-        clearForm();
-      }).catch(e => showToast('Error al enviar: ' + e.message, true));
-    } else {
-      showToast('Sin conexión a Firebase', true);
-    }
+    record.pendingApproval = true;      // internal flag, only admin acts on it
+    record.createdBy = 'PAPOI';
+    records.unshift(record);
+    saveRecords();
+    saveToFirebase(record);             // appears to everyone immediately
+    showToast('Registro guardado correctamente');
+    clearForm();
     return;
   }
 
@@ -1619,6 +1610,7 @@ window.startFirebaseSync = function() {
     records = snapshot.docs.map(d => ({ ...d.data(), _firebaseId: d.id }));
     try { localStorage.setItem('tester_records', JSON.stringify(records)); } catch(e) {}
     renderHistory();
+    if (typeof updatePendingBadge === 'function') updatePendingBadge();
   }, (err) => {
     console.warn('Firebase sync error:', err);
   });
@@ -2582,6 +2574,9 @@ function saveEditModal() {
   record.fail = fail;
   record.solved = fail !== 'N/A' && record.solution !== '' && record.solution.toLowerCase() !== 'n/a';
 
+  // Admin edited it → clear pending flag (counts as reviewed)
+  if (window._isAdmin && record.pendingApproval) { delete record.pendingApproval; }
+
   // Persist defects breakdown
   record.defects = JSON.parse(JSON.stringify(_emDefectState));
   const _bd = getDefectBreakdown(_emDefectState);
@@ -2775,74 +2770,129 @@ window.saveEditModal = async function() {
 // ── PENDING LISTENER (admin only) ──
 let _pendingUnsub = null;
 let _pendingTries = 0;
+let _editProposals = []; // edit proposals from 'pendientes' collection
+
+function updatePendingBadge() {
+  if (!window._isAdmin) return;
+  const livePending = records.filter(r => r.pendingApproval).length;
+  const total = livePending + _editProposals.length;
+  const badge = document.getElementById('pending-badge');
+  const countEl = document.getElementById('pending-count');
+  if (!badge) return;
+  if (total > 0) { countEl.textContent = total; badge.classList.add('show'); }
+  else { badge.classList.remove('show'); }
+}
+
 function startPendingListener() {
   if (!window._isAdmin) return;
-  // Wait for Firebase to be ready, retry up to ~20s
   if (!window._firebaseReady || !window._db_ref) {
     _pendingTries++;
     if (_pendingTries < 40) { setTimeout(startPendingListener, 500); }
     return;
   }
-  if (_pendingUnsub) return; // already listening
+  if (_pendingUnsub) return;
   try {
     const pendCol = window._collection(window._db_ref, 'pendientes');
     const q = window._query(pendCol, window._orderBy('requestedAt','desc'));
     _pendingUnsub = window._onSnapshot(q, (snap) => {
-      const pending = snap.docs.filter(d => d.data().status === 'pending');
-      const badge = document.getElementById('pending-badge');
-      const countEl = document.getElementById('pending-count');
-      if (pending.length > 0) {
-        countEl.textContent = pending.length;
-        badge.classList.add('show');
-      } else {
-        badge.classList.remove('show');
-      }
+      _editProposals = snap.docs.filter(d => d.data().status === 'pending').map(d => ({ id: d.id, ...d.data() }));
+      updatePendingBadge();
     }, (err) => { console.warn('Pending snapshot error:', err); });
   } catch(e) { console.warn('Pending listener error:', e); }
 }
 
 function openApprovalModal() {
-  if (!window._firebaseReady) return;
-  const pendCol = window._collection(window._db_ref, 'pendientes');
-  const q = window._query(pendCol, window._orderBy('requestedAt','desc'));
-  window._getDocs(q).then(snap => {
-    const pending = snap.docs.filter(d => d.data().status === 'pending');
-    const list = document.getElementById('approval-list');
-    list.innerHTML = '';
-    if (pending.length === 0) {
-      list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);">No hay cambios pendientes ✅</div>';
-    } else {
-      pending.forEach(docSnap => {
-        const p = docSnap.data();
-        const diffKeys = Object.keys(p.diff || {});
-        const card = document.createElement('div');
-        card.className = 'approval-card';
-        const date = new Date(p.requestedAt).toLocaleString('es-MX');
-        var diffHtml = '';
-        var isNew = (p.type === 'new');
-        if (isNew) {
-          var pr = p.proposed || {};
-          diffHtml = '<div class="approval-diff-row"><span class="field">Cell:</span><span class="new-val">' + (pr.cell||'-') + '</span></div>'
-            + '<div class="approval-diff-row"><span class="field">Tester:</span><span class="new-val">' + (pr.tester||'-') + '</span></div>'
-            + '<div class="approval-diff-row"><span class="field">Cliente:</span><span class="new-val">' + (pr.client||'-') + '</span></div>'
-            + '<div class="approval-diff-row"><span class="field">Falla:</span><span class="new-val">' + (pr.fail||'-') + '</span></div>'
-            + '<div class="approval-diff-row"><span class="field">Solución:</span><span class="new-val">' + (pr.solution||'-') + '</span></div>';
-        } else if (diffKeys.length > 0) {
-          diffKeys.forEach(function(f) {
-            diffHtml += '<div class="approval-diff-row"><span class="field">' + f + ':</span><span class="old-val">' + (p.diff[f].old||'-') + '</span><span> to </span><span class="new-val">' + (p.diff[f].new||'-') + '</span></div>';
-          });
-        } else {
-          diffHtml = '<div style="font-size:12px;color:var(--muted);">Cambios en componentes/pruebas</div>';
-        }
-        var badge = isNew ? '🆕 NUEVO REGISTRO' : '✏️ EDICIÓN';
-        card.innerHTML = '<div class="approval-card-header"><span>' + badge + ' — ' + p.requestedBy + ' · PN: ' + p.recordPartnum + '</span><span style="font-size:11px;color:#78350f;">' + date + '</span></div>'
-          + '<div class="approval-card-body">' + diffHtml + '</div>'
-          + '<div class="approval-actions"><button class="btn-reject" onclick="rejectChange(\'' + docSnap.id + '\')">✗ Rechazar</button><button class="btn-approve" onclick="approveChange(\'' + docSnap.id + '\', \'' + (p.recordId||'') + '\')">✓ Aprobar</button></div>';
-        list.appendChild(card);
+  const list = document.getElementById('approval-list');
+  list.innerHTML = '';
+  let cards = 0;
+
+  // ── 1. NEW records from PAPOI (live, flagged pendingApproval) ──
+  records.forEach((r, idx) => {
+    if (!r.pendingApproval) return;
+    cards++;
+    const card = document.createElement('div');
+    card.className = 'approval-card';
+    const date = r.ts ? new Date(r.ts).toLocaleString('es-MX') : '';
+    const recKey = r._firebaseId || String(r.id);
+    const diffHtml =
+        '<div class="approval-diff-row"><span class="field">Cell:</span><span class="new-val">' + (r.cell||'-') + '</span></div>'
+      + '<div class="approval-diff-row"><span class="field">Tester:</span><span class="new-val">' + (r.tester||'-') + '</span></div>'
+      + '<div class="approval-diff-row"><span class="field">Cliente:</span><span class="new-val">' + (r.client||'-') + '</span></div>'
+      + '<div class="approval-diff-row"><span class="field">PN:</span><span class="new-val">' + (r.partnum||'-') + '</span></div>'
+      + '<div class="approval-diff-row"><span class="field">Falla:</span><span class="new-val">' + (r.fail||'-') + '</span></div>'
+      + '<div class="approval-diff-row"><span class="field">Solución:</span><span class="new-val">' + (r.solution||'-') + '</span></div>';
+    card.innerHTML = '<div class="approval-card-header"><span>🆕 NUEVO REGISTRO — ' + (r.createdBy||'PAPOI') + '</span><span style="font-size:11px;color:#78350f;">' + date + '</span></div>'
+      + '<div class="approval-card-body">' + diffHtml + '</div>'
+      + '<div class="approval-actions">'
+      + '<button class="btn-reject" onclick="rejectNewRecord(\'' + recKey + '\')">✗ Rechazar (eliminar)</button>'
+      + '<button class="btn-edit" onclick="closeApprovalModal();editRecordByKey(\'' + recKey + '\')" style="background:#fef3c7;border:1px solid #f59e0b;color:#92400e;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">✎ Editar</button>'
+      + '<button class="btn-approve" onclick="approveNewRecord(\'' + recKey + '\')">✓ Aprobar</button>'
+      + '</div>';
+    list.appendChild(card);
+  });
+
+  // ── 2. EDIT proposals from 'pendientes' collection ──
+  _editProposals.forEach(p => {
+    cards++;
+    const diffKeys = Object.keys(p.diff || {});
+    const card = document.createElement('div');
+    card.className = 'approval-card';
+    const date = new Date(p.requestedAt).toLocaleString('es-MX');
+    var diffHtml = '';
+    if (diffKeys.length > 0) {
+      diffKeys.forEach(function(f) {
+        diffHtml += '<div class="approval-diff-row"><span class="field">' + f + ':</span><span class="old-val">' + (p.diff[f].old||'-') + '</span><span> → </span><span class="new-val">' + (p.diff[f].new||'-') + '</span></div>';
       });
+    } else {
+      diffHtml = '<div style="font-size:12px;color:var(--muted);">Cambios en componentes/pruebas</div>';
     }
-    document.getElementById('approval-modal').classList.add('open');
-  }).catch(e => showToast('Error cargando pendientes: ' + e.message, true));
+    card.innerHTML = '<div class="approval-card-header"><span>✏️ EDICIÓN — ' + p.requestedBy + ' · PN: ' + p.recordPartnum + '</span><span style="font-size:11px;color:#78350f;">' + date + '</span></div>'
+      + '<div class="approval-card-body">' + diffHtml + '</div>'
+      + '<div class="approval-actions"><button class="btn-reject" onclick="rejectChange(\'' + p.id + '\')">✗ Rechazar</button><button class="btn-approve" onclick="approveChange(\'' + p.id + '\', \'' + (p.recordId||'') + '\')">✓ Aprobar</button></div>';
+    list.appendChild(card);
+  });
+
+  if (cards === 0) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);">No hay pendientes ✅</div>';
+  }
+  document.getElementById('approval-modal').classList.add('open');
+}
+
+// Approve a live new record: just remove the pending flag
+async function approveNewRecord(recKey) {
+  const idx = records.findIndex(r => (r._firebaseId||String(r.id)) === recKey);
+  if (idx < 0) return;
+  const record = records[idx];
+  delete record.pendingApproval;
+  if (!record.changeHistory) record.changeHistory = [];
+  record.changeHistory.unshift({ date: new Date().toLocaleString('es-MX'), action: 'APROBADO', detail: 'Registro de PAPOI aprobado por Admin' });
+  saveRecords();
+  await saveToFirebase(record);
+  showToast('✅ Registro aprobado');
+  updatePendingBadge();
+  openApprovalModal();
+  renderHistory();
+}
+
+// Reject a live new record: delete it for everyone
+async function rejectNewRecord(recKey) {
+  if (!confirm('¿Rechazar y eliminar este registro?')) return;
+  const idx = records.findIndex(r => (r._firebaseId||String(r.id)) === recKey);
+  if (idx < 0) return;
+  const fbId = records[idx]._firebaseId;
+  records.splice(idx, 1);
+  saveRecords();
+  if (fbId) await deleteFromFirebase(fbId);
+  showToast('Registro rechazado y eliminado');
+  updatePendingBadge();
+  openApprovalModal();
+  renderHistory();
+}
+
+// Open editor for a record by its key (admin requests edition)
+function editRecordByKey(recKey) {
+  const idx = records.findIndex(r => (r._firebaseId||String(r.id)) === recKey);
+  if (idx >= 0) editRecord(idx);
 }
 
 function closeApprovalModal() {
