@@ -587,6 +587,46 @@ body {
 .btn-solve:active { background: #d1fae5; }
 </style>
 
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, setDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDLsOR5IpS57aYGRcuLpzwhoprBmEdCgGM",
+    authDomain: "telamon-2e681.firebaseapp.com",
+    projectId: "telamon-2e681",
+    storageBucket: "telamon-2e681.firebasestorage.app",
+    messagingSenderId: "446082375088",
+    appId: "1:446082375088:web:028fa9598780e39cb48a75"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const COL = "registros";
+
+  // Expose to global scope
+  window._db = db;
+  window._col = collection(db, COL);
+  window._addDoc = addDoc;
+  window._setDoc = setDoc;
+  window._deleteDoc = deleteDoc;
+  window._doc = doc;
+  window._db_ref = db;
+  window._onSnapshot = onSnapshot;
+  window._query = query;
+  window._orderBy = orderBy;
+  window._collection = collection;
+  window._COL = COL;
+  window._firebaseReady = true;
+
+  // Start real-time listener once Firebase is ready
+  window.addEventListener('load', () => {
+    if (typeof window.startFirebaseSync === 'function') window.startFirebaseSync();
+  });
+</script>
+
 <!-- xlsx-js-style: SheetJS con soporte completo de estilos de celda -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
@@ -1050,19 +1090,54 @@ function submitForm() {
 
   records.unshift(record);
   saveRecords();
+  saveToFirebase(record);
   showToast('Registro guardado correctamente');
   clearForm();
 }
 
 // ── STORAGE ──
 function saveRecords() {
+  // localStorage como fallback
   try { localStorage.setItem('tester_records', JSON.stringify(records)); } catch(e) {}
 }
 function loadRecords() {
+  // Cargar desde localStorage mientras llega Firebase
   try {
     const raw = localStorage.getItem('tester_records');
     if (raw) records = JSON.parse(raw);
   } catch(e) { records = []; }
+}
+
+// ── FIREBASE SYNC ──
+window.startFirebaseSync = function() {
+  if (!window._firebaseReady) return;
+  const q = window._query(window._collection(window._db_ref, window._COL), window._orderBy('ts', 'desc'));
+  window._onSnapshot(q, (snapshot) => {
+    records = snapshot.docs.map(d => ({ ...d.data(), _firebaseId: d.id }));
+    try { localStorage.setItem('tester_records', JSON.stringify(records)); } catch(e) {}
+    renderHistory();
+  }, (err) => {
+    console.warn('Firebase sync error:', err);
+  });
+};
+
+async function saveToFirebase(record) {
+  if (!window._firebaseReady) return;
+  try {
+    if (record._firebaseId) {
+      await window._setDoc(window._doc(window._db_ref, window._COL, record._firebaseId), record);
+    } else {
+      const docRef = await window._addDoc(window._col, record);
+      record._firebaseId = docRef.id;
+    }
+  } catch(e) { console.warn('Firebase save error:', e); }
+}
+
+async function deleteFromFirebase(firebaseId) {
+  if (!window._firebaseReady || !firebaseId) return;
+  try {
+    await window._deleteDoc(window._doc(window._db_ref, window._COL, firebaseId));
+  } catch(e) { console.warn('Firebase delete error:', e); }
 }
 
 // ── EXPORTAR ──
@@ -1688,9 +1763,11 @@ function toggleRecord(idx) {
 }
 function deleteRecord(idx) {
   if (!confirm('¿Eliminar este registro?')) return;
+  const firebaseId = records[idx]._firebaseId;
   records.splice(idx, 1);
   saveRecords();
-  renderHistory();
+  if (firebaseId) deleteFromFirebase(firebaseId);
+  else renderHistory();
 }
 
 function toggleOtherClient(val) {
@@ -1769,6 +1846,7 @@ function editRecord(idx) {
   });
 
   saveRecords();
+  saveToFirebase(record);
   renderHistory();
   showToast('Registro actualizado correctamente');
 }
@@ -1789,6 +1867,7 @@ function markSolved(idx) {
   });
 
   saveRecords();
+  saveToFirebase(record);
   renderHistory();
   showToast('Registro marcado como solucionado');
 }
@@ -1802,6 +1881,13 @@ function toggleHistory(idx) {
 
 
 init();
+
+// Start Firebase listener (called from module script once ready, or retry here)
+setTimeout(() => {
+  if (window._firebaseReady && typeof window.startFirebaseSync === 'function') {
+    window.startFirebaseSync();
+  }
+}, 1500);
 
 // ── SERVICE WORKER REGISTRATION ──
 if ('serviceWorker' in navigator) {
