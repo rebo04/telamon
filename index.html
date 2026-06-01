@@ -2444,25 +2444,31 @@ window.saveEditModal = async function() {
 
 // ── PENDING LISTENER (admin only) ──
 let _pendingUnsub = null;
+let _pendingTries = 0;
 function startPendingListener() {
-  if (!window._firebaseReady || !window._isAdmin) return;
-  setTimeout(() => {
-    try {
-      const pendCol = window._collection(window._db_ref, 'pendientes');
-      const q = window._query(pendCol, window._orderBy('requestedAt','desc'));
-      _pendingUnsub = window._onSnapshot(q, (snap) => {
-        const pending = snap.docs.filter(d => d.data().status === 'pending');
-        const badge = document.getElementById('pending-badge');
-        const countEl = document.getElementById('pending-count');
-        if (pending.length > 0) {
-          countEl.textContent = pending.length;
-          badge.classList.add('show');
-        } else {
-          badge.classList.remove('show');
-        }
-      });
-    } catch(e) { console.warn('Pending listener error:', e); }
-  }, 2000);
+  if (!window._isAdmin) return;
+  // Wait for Firebase to be ready, retry up to ~20s
+  if (!window._firebaseReady || !window._db_ref) {
+    _pendingTries++;
+    if (_pendingTries < 40) { setTimeout(startPendingListener, 500); }
+    return;
+  }
+  if (_pendingUnsub) return; // already listening
+  try {
+    const pendCol = window._collection(window._db_ref, 'pendientes');
+    const q = window._query(pendCol, window._orderBy('requestedAt','desc'));
+    _pendingUnsub = window._onSnapshot(q, (snap) => {
+      const pending = snap.docs.filter(d => d.data().status === 'pending');
+      const badge = document.getElementById('pending-badge');
+      const countEl = document.getElementById('pending-count');
+      if (pending.length > 0) {
+        countEl.textContent = pending.length;
+        badge.classList.add('show');
+      } else {
+        badge.classList.remove('show');
+      }
+    }, (err) => { console.warn('Pending snapshot error:', err); });
+  } catch(e) { console.warn('Pending listener error:', e); }
 }
 
 function openApprovalModal() {
