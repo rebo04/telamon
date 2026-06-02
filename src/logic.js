@@ -62,6 +62,7 @@ export const DEFECT_TYPES = {
     'Lectura intermitente',
     'Falla de comunicación del tester',
     'Contacto sucio en fixture',
+    'Holder mal alineado / conector no asienta en fixture',
   ],
   'Defecto de Operador': [
     'Montaje incorrecto del arnés',

@@ -119,8 +119,8 @@ describe('DEFECT_TYPES', () => {
     expect(DEFECT_TYPES).toHaveProperty('Defecto de Operador');
   });
 
-  it('Detección category has 8 entries', () => {
-    expect(DEFECT_TYPES['Defecto de Detección (Tester)']).toHaveLength(8);
+  it('Detección category has 9 entries', () => {
+    expect(DEFECT_TYPES['Defecto de Detección (Tester)']).toHaveLength(9);
   });
 
   it('Operador category has 8 entries', () => {
