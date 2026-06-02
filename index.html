@@ -1388,7 +1388,7 @@ body.role-papoi .papoi-only { display: inline-flex !important; }
           <div><label class="form-label">Cliente</label><input class="form-input" id="em-client"></div>
           <div><label class="form-label">Inspector</label><input class="form-input" id="em-inspector"></div>
         </div>
-        <div style="margin-top:10px;"><label class="form-label">Part Number</label><input class="form-input" id="em-partnum"></div>
+        <div style="margin-top:10px;" id="em-partnum-container"></div>
       </div>
 
       <!-- Componentes -->
@@ -2756,7 +2756,18 @@ function editRecord(idx) {
   document.getElementById('em-client').value    = r.client || '';
   document.getElementById('em-inspector').value = r.inspector || '';
   document.getElementById('em-solution').value  = r.solution || '';
-  document.getElementById('em-partnum').value   = r.parts ? r.parts.map(p=>p.partnum).join(' / ') : (r.partnum||'');
+  // Render one editable input per part number
+  const _pnCont  = document.getElementById('em-partnum-container');
+  const _pnParts = (r.parts && r.parts.length > 0) ? r.parts : [{ partnum: r.partnum || '' }];
+  _pnCont.innerHTML = _pnParts.map((p, i) => `
+    <div style="margin-bottom:${i < _pnParts.length - 1 ? '8px' : '0'};">
+      <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);margin-bottom:6px;">
+        Part Number${_pnParts.length > 1 ? ' ' + (i + 1) : ''}
+      </label>
+      <input id="em-partnum-${i}" value="${(p.partnum||'').replace(/"/g,'&quot;')}"
+        style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:var(--mono);background:rgba(255,255,255,0.66);color:var(--text-dark);outline:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);">
+    </div>`
+  ).join('');
   document.getElementById('edit-modal-title').textContent = '✏️ Editar Registro — ' + (r.parts?r.parts[0].partnum:r.partnum||'');
 
   // ── Restore comp state from first part block ──
@@ -2907,6 +2918,18 @@ function saveEditModal() {
   record.client    = document.getElementById('em-client').value.trim();
   record.inspector = document.getElementById('em-inspector').value.trim();
   record.solution  = document.getElementById('em-solution').value.trim();
+
+  // Update each part number individually from its own input
+  if (record.parts && record.parts.length > 0) {
+    record.parts.forEach((p, i) => {
+      const inp = document.getElementById('em-partnum-' + i);
+      if (inp) p.partnum = inp.value.trim();
+    });
+    record.partnum = record.parts.map(p => p.partnum).join(' / ');
+  } else {
+    const inp = document.getElementById('em-partnum-0');
+    if (inp) record.partnum = inp.value.trim();
+  }
 
   // Falla
   let fail = FAILURES.filter(f => _emFailState[f]).join(', ');
