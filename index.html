@@ -2043,17 +2043,17 @@ function exportExcel() {
   const stVal    = (bg)   => st('111827',bg||C.white,  {sz:10, halign:'left'});
   const stCtr    = (fg,bg)=> st(fg, bg, {bold:true, sz:10, halign:'center', wrap:false});
   const stBadge  = (status) => {
-    if (status === 'OK')          return stCtr(C.green, C.greenLt);
-    if (status === 'CON FALLA')   return stCtr(C.red,   C.redLt);
+    if (status === 'PASS')        return stCtr(C.green, C.greenLt);
+    if (status === 'FAIL')        return stCtr(C.red,   C.redLt);
     if (status === 'SOLUCIONADO') return stCtr(C.blue,  C.blueLt);
     return stCtr(C.gray, C.grayLt);
   };
   const mergeRow = (ri, c0, c1) => ({s:{r:ri,c:c0}, e:{r:ri,c:c1}});
   const getStatus = (r) => {
     const hf = r.fail && r.fail.toLowerCase() !== 'n/a' && r.fail.trim() !== '';
-    if (hf && !r.solved) return 'CON FALLA';
+    if (hf && !r.solved) return 'FAIL';
     if (hf &&  r.solved) return 'SOLUCIONADO';
-    return 'OK';
+    return 'PASS';
   };
 
   // ════════════════════════════════════════════════════════
@@ -2073,6 +2073,7 @@ function exportExcel() {
     aoa.push(['Total Registros',    records.length,'','','']);
     aoa.push(['Total Part Numbers', records.reduce((a,r)=>a+(r.parts?r.parts.length:1),0),'','','']);
     aoa.push(['Sistema',            'Telamon Inspector v2.0','','','']);
+    aoa.push(['Desarrollado por',   'Arturo Rebolledo Avelino','','','']);
     aoa.push(['']);
     aoa.push(['CONTENIDO DEL REPORTE','','','','']);
     const sheetList = [
@@ -2120,7 +2121,7 @@ function exportExcel() {
     const rowMeta = []; // {r, type, ...extra}
 
     aoa.push(['TELAMON  ·  CHECKLIST DE INSPECCIÓN  |  WIRE HARNESS','','','']);
-    aoa.push(['Exportado: '+today+'  ·  Total registros: '+records.length,'','','']);
+    aoa.push(['Exportado: '+today+'  ·  Total registros: '+records.length+'  ·  Made by: Arturo Rebolledo Avelino','','','']);
     merges.push(mergeRow(0,0,3), mergeRow(1,0,3));
     rowMeta.push({r:0,type:'title'}, {r:1,type:'sub'});
 
@@ -2285,7 +2286,7 @@ function exportExcel() {
       'PART NUMBER','COMPONENTES','PRUEBAS','FALLA','DEF. TESTER','DEF. OPERADOR','ESTATUS','SOLUCIÓN'];
     const aoa = [];
     aoa.push(['TELAMON  ·  REGISTROS DE INSPECCIÓN  |  '+today,...Array(HDRS.length-1).fill('')]);
-    aoa.push(['REG-QC-TLM-001  ·  Rev. A  ·  Total: '+records.length+' registros',...Array(HDRS.length-1).fill('')]);
+    aoa.push(['REG-QC-TLM-001  ·  Rev. A  ·  Total: '+records.length+' registros  ·  Made by: Arturo Rebolledo Avelino',...Array(HDRS.length-1).fill('')]);
     aoa.push(HDRS);
 
     records.forEach(function(r, idx) {
@@ -2343,8 +2344,8 @@ function exportExcel() {
   {
     const total    = records.length;
     const totalPNs = records.reduce(function(a,r){return a+(r.parts?r.parts.length:1);},0);
-    const okCount  = records.filter(function(r){return getStatus(r)==='OK';}).length;
-    const failCnt  = records.filter(function(r){return getStatus(r)==='CON FALLA';}).length;
+    const okCount  = records.filter(function(r){return getStatus(r)==='PASS';}).length;
+    const failCnt  = records.filter(function(r){return getStatus(r)==='FAIL';}).length;
     const solvedCnt= records.filter(function(r){return getStatus(r)==='SOLUCIONADO';}).length;
     const fpy      = total>0 ? (okCount/total*100).toFixed(1)+'%' : '—';
     const testers  = [...new Set(records.map(function(r){return r.tester;}))];
@@ -2359,14 +2360,14 @@ function exportExcel() {
       var t=r.tester||'?'; if(!tStats[t]) tStats[t]={total:0,ok:0,fail:0,solved:0,cells:new Set(),clients:new Set()};
       tStats[t].total++;
       var s=getStatus(r);
-      if(s==='OK') tStats[t].ok++; else if(s==='CON FALLA') tStats[t].fail++; else tStats[t].solved++;
+      if(s==='PASS') tStats[t].ok++; else if(s==='FAIL') tStats[t].fail++; else tStats[t].solved++;
       if(r.cell) tStats[t].cells.add(String(r.cell));
       if(r.client) tStats[t].clients.add(r.client.trim());
     });
 
     const aoa=[];
     aoa.push(['TELAMON  ·  DASHBOARD DE CALIDAD  |  KPIs OPERATIVOS','','','','','']);
-    aoa.push(['Actualizado: '+today+'  ·  Generado por: Telamon Inspector v2.0','','','','','']);
+    aoa.push(['Actualizado: '+today+'  ·  Generado por: Telamon Inspector v2.0  ·  Made by: Arturo Rebolledo Avelino','','','','','']);
     aoa.push(['']);
     aoa.push(['KPI','VALOR','','RESUMEN POR ESTATUS','CANTIDAD','']);
     aoa.push(['Total Inspeccionados', total,'','OK (Sin Falla)',okCount,'']);
@@ -2376,7 +2377,7 @@ function exportExcel() {
     aoa.push(['Solucionados',          solvedCnt,'','Testers Activos',testers.length,'']);
     aoa.push(['First Pass Yield',      fpy,'','','','']);
     aoa.push(['']);
-    aoa.push(['CELLS','CLIENTES','TESTER','TOTAL','OK','CON FALLA','SOLUCIONADO','% OK']);
+    aoa.push(['CELLS','CLIENTES','TESTER','TOTAL','PASS','FAIL','SOLUCIONADO','% PASS']);
     const tStatStart = aoa.length;
     Object.entries(tStats).sort(function(a,b){return b[1].total-a[1].total;}).forEach(function(e){
       var t=e[0], s=e[1]; var pct=s.total>0?(s.ok/s.total*100).toFixed(1)+'%':'—';
@@ -2449,7 +2450,7 @@ function exportExcel() {
     var totalAll=totalDet+totalOp||1;
     const aoa=[];
     aoa.push(['TELAMON  ·  ANÁLISIS DE DEFECTOS  |  DETECCIÓN vs OPERADOR','','','']);
-    aoa.push(['Total defectos: '+(totalDet+totalOp)+'  ·  Exportado: '+today,'','','']);
+    aoa.push(['Total defectos: '+(totalDet+totalOp)+'  ·  Exportado: '+today+'  ·  Made by: Arturo Rebolledo Avelino','','','']);
     aoa.push(['']);
     aoa.push(['CATEGORÍA','CANTIDAD','% DEL TOTAL','']);
     aoa.push(['Defectos de Detección (Tester)',totalDet,(totalDet/totalAll*100).toFixed(1)+'%','']);
@@ -2659,14 +2660,14 @@ function renderHistory() {
       <div class="stat-num" style="color:var(--green)">
         ${ok}
       </div>
-      <div class="stat-label">Sin Falla</div>
+      <div class="stat-label">PASS</div>
     </div>
 
     <div class="stat-box">
       <div class="stat-num" style="color:var(--red)">
         ${withFail}
       </div>
-      <div class="stat-label">Con Falla</div>
+      <div class="stat-label">FAIL</div>
     </div>
 
     <div class="stat-box">
@@ -2700,11 +2701,11 @@ function renderHistory() {
 
     let statusPill = '';
     if (hasFail && !r.solved) {
-      statusPill = `<span class="status-pill pill-fail">Con Falla</span>`;
+      statusPill = `<span class="status-pill pill-fail">FAIL</span>`;
     } else if (hasFail && r.solved) {
       statusPill = `<span class="status-pill" style="background:#dbeafe; color:var(--accent2);">Solucionado</span>`;
     } else {
-      statusPill = `<span class="status-pill pill-ok">OK</span>`;
+      statusPill = `<span class="status-pill pill-ok">PASS</span>`;
     }
 
     // Support both new (parts[]) and legacy (components/tests) format
@@ -3439,5 +3440,10 @@ if ('serviceWorker' in navigator) {
 }
 
 </script>
+
+<div style="text-align:center;padding:12px 0 20px;font-size:10px;color:var(--muted);font-family:var(--mono);letter-spacing:0.5px;opacity:0.6;">
+  Made by Arturo Rebolledo Avelino &nbsp;·&nbsp; Telamon QC System
+</div>
+
 </body>
 </html>
