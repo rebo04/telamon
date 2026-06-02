@@ -2002,502 +2002,574 @@ function exportExcel() {
   const today = new Date().toLocaleDateString('es-MX');
   const todayISO = new Date().toISOString().slice(0,10);
 
-  // ── PALETA ──
+  // ── COLOR PALETTE ──
   const C = {
-    dark:     '1E293B', blue:    '2563EB', blueLt:  'DBEAFE',
-    green:    '059669', greenLt: 'D1FAE5', red:     'DC2626',
-    redLt:    'FEE2E2', amber:   'F59E0B', amberLt: 'FEF3C7',
-    gray:     '6B7280', grayLt:  'F3F4F6', white:   'FFFFFF',
-    hdr2:     '1E3A5F', border:  'D1D5DB',
+    navy:    '0F172A', navyMd:  '1E3A5F', navyLt:  'E2E8F0',
+    blue:    '1D4ED8', blueLt:  'DBEAFE', bluePale: 'EFF6FF',
+    teal:    '0F766E', tealLt:  'CCFBF1', tealPale: 'F0FDFA',
+    green:   '15803D', greenLt: 'DCFCE7', greenPale:'F0FDF4',
+    red:     'B91C1C', redLt:   'FEE2E2', redPale:  'FFF5F5',
+    amber:   'B45309', amberLt: 'FEF3C7', amberPale:'FFFBEB',
+    gray:    '6B7280', grayLt:  'F3F4F6', grayPale: 'F9FAFB',
+    white:   'FFFFFF', border:  'CBD5E1',
   };
 
-  function hdr(fgRGB, bgRGB, bold=true, sz=10, italic=false) {
-    return { font: { name:'Arial', sz, bold, color:{rgb:fgRGB}, italic },
-             fill: { patternType:'solid', fgColor:{rgb:bgRGB} },
-             alignment: { horizontal:'center', vertical:'center', wrapText:true },
-             border: { top:{style:'thin',color:{rgb:C.border}}, bottom:{style:'thin',color:{rgb:C.border}},
-                       left:{style:'thin',color:{rgb:C.border}}, right:{style:'thin',color:{rgb:C.border}} } };
+  // ── STYLE FACTORY ──
+  function st(fg, bg, opts) {
+    const o = opts || {};
+    const bold = o.bold !== undefined ? o.bold : false;
+    const sz = o.sz !== undefined ? o.sz : 10;
+    const halign = o.halign || 'left';
+    const valign = o.valign || 'center';
+    const wrap = o.wrap !== undefined ? o.wrap : true;
+    const italic = o.italic || false;
+    return {
+      font: { name:'Calibri', sz, bold, italic, color:{rgb:fg} },
+      fill: { patternType:'solid', fgColor:{rgb:bg} },
+      alignment: { horizontal:halign, vertical:valign, wrapText:wrap },
+      border: {
+        top:   {style:'thin',color:{rgb:C.border}},
+        bottom:{style:'thin',color:{rgb:C.border}},
+        left:  {style:'thin',color:{rgb:C.border}},
+        right: {style:'thin',color:{rgb:C.border}},
+      },
+    };
   }
-  function cell(fgRGB, bgRGB, bold=false, sz=9, halign='left', wrap=true) {
-    return { font: { name:'Arial', sz, bold, color:{rgb:fgRGB} },
-             fill: { patternType:'solid', fgColor:{rgb:bgRGB} },
-             alignment: { horizontal:halign, vertical:'center', wrapText:wrap },
-             border: { top:{style:'thin',color:{rgb:C.border}}, bottom:{style:'thin',color:{rgb:C.border}},
-                       left:{style:'thin',color:{rgb:C.border}}, right:{style:'thin',color:{rgb:C.border}} } };
-  }
-  function titleStyle() {
-    return { font:{name:'Arial',sz:14,bold:true,color:{rgb:C.white}},
-             fill:{patternType:'solid',fgColor:{rgb:C.dark}},
-             alignment:{horizontal:'center',vertical:'center'} };
-  }
+  const stTitle  = (bg)   => st(C.white, bg||C.navy,  {bold:true, sz:13, halign:'center', wrap:false});
+  const stSub    = ()     => st(C.gray,  C.grayLt,    {italic:true, sz:9, halign:'center', wrap:false});
+  const stHdr    = (bg)   => st(C.white, bg||C.blue,  {bold:true, sz:10, halign:'center'});
+  const stSecHdr = (bg)   => st(C.white, bg||C.navyMd,{bold:true, sz:10, halign:'left'});
+  const stLabel  = (bg)   => st(C.navy,  bg||C.grayPale, {bold:true, sz:10, halign:'left', wrap:false});
+  const stVal    = (bg)   => st('111827',bg||C.white,  {sz:10, halign:'left'});
+  const stCtr    = (fg,bg)=> st(fg, bg, {bold:true, sz:10, halign:'center', wrap:false});
+  const stBadge  = (status) => {
+    if (status === 'OK')          return stCtr(C.green, C.greenLt);
+    if (status === 'CON FALLA')   return stCtr(C.red,   C.redLt);
+    if (status === 'SOLUCIONADO') return stCtr(C.blue,  C.blueLt);
+    return stCtr(C.gray, C.grayLt);
+  };
+  const mergeRow = (ri, c0, c1) => ({s:{r:ri,c:c0}, e:{r:ri,c:c1}});
+  const getStatus = (r) => {
+    const hf = r.fail && r.fail.toLowerCase() !== 'n/a' && r.fail.trim() !== '';
+    if (hf && !r.solved) return 'CON FALLA';
+    if (hf &&  r.solved) return 'SOLUCIONADO';
+    return 'OK';
+  };
 
-  // ════════════════════════════════════════
+  // ════════════════════════════════════════════════════════
   // HOJA 1: PORTADA
-  // ════════════════════════════════════════
-  const aoa_cover = [];
-  aoa_cover.push(['TELAMON  —  INSPECCIÓN TESTER  |  WIRE HARNESS', '', '', '', '']);
-  aoa_cover.push(['REGISTRO DE CONTROL DE CALIDAD', '', '', '', '']);
-  aoa_cover.push(['']);
-  aoa_cover.push(['CAMPO', 'VALOR', '', '', '']);
-  aoa_cover.push(['Documento',      'REG-QC-TLM-001']);
-  aoa_cover.push(['Revisión',       'REV. A']);
-  aoa_cover.push(['Fecha de Emisión', today]);
-  aoa_cover.push(['Departamento',   'Calidad / Quality Engineering']);
-  aoa_cover.push(['Planta',         'Telamon – Wire Harness Division']);
-  aoa_cover.push(['Total Registros', records.length]);
-  aoa_cover.push(['Exportado por',  'Sistema Telamon Inspector v1.0']);
-  aoa_cover.push(['']);
-  aoa_cover.push(['HOJA', 'NOMBRE', 'DESCRIPCIÓN', '', '']);
-  aoa_cover.push(['1','PORTADA','Identificación del documento','','']);
-  aoa_cover.push(['2','REGISTRO','Registros reales capturados en la app','','']);
-  aoa_cover.push(['3','DASHBOARD','KPIs y métricas operativas','','']);
-  aoa_cover.push(['4','COMPONENTES','Catálogo de componentes del sistema','','']);
-  aoa_cover.push(['5','PRUEBAS','Catálogo de pruebas eléctricas y mecánicas','','']);
-  aoa_cover.push(['6','FALLAS','Catálogo de fallas y análisis de frecuencia','','']);
+  // ════════════════════════════════════════════════════════
+  {
+    const aoa = [];
+    aoa.push(['TELAMON  ·  CONTROL DE CALIDAD  |  WIRE HARNESS INSPECTION','','','','']);
+    aoa.push(['REPORTE DE INSPECCIÓN TESTER — WIRE HARNESS DIVISION','','','','']);
+    aoa.push(['']);
+    aoa.push(['IDENTIFICACIÓN DEL DOCUMENTO','','','','']);
+    aoa.push(['Documento',          'REG-QC-TLM-001','','','']);
+    aoa.push(['Revisión',           'REV. A','','','']);
+    aoa.push(['Fecha de Emisión',   today,'','','']);
+    aoa.push(['Departamento',       'Calidad / Quality Engineering','','','']);
+    aoa.push(['Planta',             'Telamon – Wire Harness Division','','','']);
+    aoa.push(['Total Registros',    records.length,'','','']);
+    aoa.push(['Total Part Numbers', records.reduce((a,r)=>a+(r.parts?r.parts.length:1),0),'','','']);
+    aoa.push(['Sistema',            'Telamon Inspector v2.0','','','']);
+    aoa.push(['']);
+    aoa.push(['CONTENIDO DEL REPORTE','','','','']);
+    const sheetList = [
+      ['1','PORTADA',   'Identificación y portada del documento'],
+      ['2','CHECKLIST', 'Inspección detallada por componente y prueba — registro completo'],
+      ['3','REGISTROS', 'Tabla resumen de todos los registros capturados'],
+      ['4','DASHBOARD', 'KPIs operativos y análisis estadístico'],
+      ['5','DEFECTOS',  'Análisis de defectos: Detección (Tester) vs Operador'],
+      ['6','CATÁLOGOS', 'Catálogos de referencia: componentes, pruebas y fallas'],
+    ];
+    sheetList.forEach(row => aoa.push([...row,'']));
 
-  const ws_cover = XLSX.utils.aoa_to_sheet(aoa_cover);
-  ws_cover['!cols'] = [{wch:22},{wch:36},{wch:40},{wch:10},{wch:10}];
-  ws_cover['!rows'] = [{hpt:32},{hpt:20},{hpt:10},{hpt:22}];
-  ws_cover['!merges'] = [
-    {s:{r:0,c:0},e:{r:0,c:4}}, {s:{r:1,c:0},e:{r:1,c:4}},
-    {s:{r:3,c:0},e:{r:3,c:0}}, {s:{r:3,c:1},e:{r:3,c:4}},
-    {s:{r:12,c:2},e:{r:12,c:4}},
-    ...Array.from({length:6},(_,i)=>({s:{r:13+i,c:2},e:{r:13+i,c:4}}))
-  ];
-  // Styles
-  ws_cover['A1'].s = titleStyle();
-  ws_cover['A2'].s = { font:{name:'Arial',sz:11,bold:true,color:{rgb:'94A3B8'}},
-    fill:{patternType:'solid',fgColor:{rgb:C.dark}},
-    alignment:{horizontal:'center',vertical:'center'} };
-  ['A4','B4'].forEach(ref => { if(ws_cover[ref]) ws_cover[ref].s = hdr(C.white,C.hdr2); });
-  for(let i=4;i<=10;i++){
-    if(ws_cover[`A${i+1}`]) ws_cover[`A${i+1}`].s = cell(C.white,C.hdr2,true,10,'left',false);
-    if(ws_cover[`B${i+1}`]) ws_cover[`B${i+1}`].s = cell('111827',C.grayLt,false,10,'left',false);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{wch:24},{wch:44},{wch:52},{wch:8},{wch:8}];
+    ws['!merges'] = [
+      mergeRow(0,0,4), mergeRow(1,0,4), mergeRow(3,0,4), mergeRow(13,0,4),
+      ...[4,5,6,7,8,9,10,11].map(function(i){ return mergeRow(i,1,4); }),
+      ...[14,15,16,17,18,19].map(function(i){ return {s:{r:i,c:2},e:{r:i,c:4}}; }),
+    ];
+    if (ws['A1']) ws['A1'].s = stTitle();
+    if (ws['A2']) ws['A2'].s = st(C.gray, C.navy, {sz:11, halign:'center', italic:true});
+    if (ws['A4']) ws['A4'].s = stSecHdr();
+    for (var pi=4; pi<=11; pi++) {
+      var pr = pi+1;
+      if (ws['A'+pr]) ws['A'+pr].s = stLabel();
+      if (ws['B'+pr]) ws['B'+pr].s = stVal();
+    }
+    ['A14','B14','C14'].forEach(function(ref){ if(ws[ref]) ws[ref].s=stHdr(C.blue); });
+    for (var si=0; si<6; si++) {
+      var sr = 15+si; var sbg = si%2===0 ? C.bluePale : C.white;
+      if(ws['A'+sr]) ws['A'+sr].s=stCtr(C.white, C.blue);
+      if(ws['B'+sr]) ws['B'+sr].s=st(C.navy, sbg, {bold:true, sz:10, wrap:false});
+      if(ws['C'+sr]) ws['C'+sr].s=st(C.gray, sbg, {sz:9});
+    }
+    XLSX.utils.book_append_sheet(wb, ws, 'PORTADA');
   }
-  ['A13','B13','C13'].forEach(ref => { if(ws_cover[ref]) ws_cover[ref].s = hdr(C.white,C.blue); });
-  for(let i=0;i<6;i++){
-    const r=14+i; const bg=i%2===0?C.white:'F0F4FF';
-    if(ws_cover[`A${r}`]) ws_cover[`A${r}`].s = cell(C.white,C.blue,true,10,'center',false);
-    if(ws_cover[`B${r}`]) ws_cover[`B${r}`].s = cell(C.dark,bg,true,10,'left',false);
-    if(ws_cover[`C${r}`]) ws_cover[`C${r}`].s = cell(C.gray,bg,false,9,'left',false);
-  }
-  XLSX.utils.book_append_sheet(wb, ws_cover, 'PORTADA');
 
-  // ════════════════════════════════════════
-  // HOJA 2: REGISTRO (datos reales)
-  // ════════════════════════════════════════
-  const REG_HEADERS = [
-    'ID','FECHA','HORA','TESTER/CELL','SLOT','INSPECTOR','CLIENTE',
-    'PART NUMBER','COMPONENTES DETECTADOS','PRUEBAS REALIZADAS',
-    'FALLA DETECTADA','DEFECTO DETECCIÓN (TESTER)','DEFECTO OPERADOR','ESTATUS','SOLUCIÓN IMPLEMENTADA','OBSERVACIONES'
-  ];
+  // ════════════════════════════════════════════════════════
+  // HOJA 2: CHECKLIST (per-record component + test inspection)
+  // ════════════════════════════════════════════════════════
+  {
+    const COMP_CATS = Object.keys(COMPONENTS_DICT);
+    const aoa = [];
+    const merges = [];
+    const rowMeta = []; // {r, type, ...extra}
 
-  const aoa_reg = [];
-  // Fila 0: título
-  aoa_reg.push([`TELAMON  |  REGISTRO DE INSPECCIÓN TESTER  —  WIRE HARNESS`, ...Array(REG_HEADERS.length-1).fill('')]);
-  // Fila 1: sub-header
-  aoa_reg.push([`Documento: REG-QC-TLM-001  |  Rev. A  |  Exportado: ${today}`, ...Array(REG_HEADERS.length-1).fill('')]);
-  // Fila 2: headers de columna
-  aoa_reg.push(REG_HEADERS);
+    aoa.push(['TELAMON  ·  CHECKLIST DE INSPECCIÓN  |  WIRE HARNESS','','','']);
+    aoa.push(['Exportado: '+today+'  ·  Total registros: '+records.length,'','','']);
+    merges.push(mergeRow(0,0,3), mergeRow(1,0,3));
+    rowMeta.push({r:0,type:'title'}, {r:1,type:'sub'});
 
-  records.forEach((r, idx) => {
-    const hasFail = r.fail && r.fail.toLowerCase() !== 'n/a' && r.fail.trim() !== '';
-    const status = hasFail && !r.solved ? 'CON FALLA' : hasFail && r.solved ? 'SOLUCIONADO' : 'OK';
-    const dateStr = new Date(r.date+'T12:00:00').toLocaleDateString('es-MX');
-    const timeStr = new Date(r.ts).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
-    const parts = r.parts || [{partnum:r.partnum, components:r.components, tests:r.tests}];
+    var clRow = 2;
 
-    parts.forEach(p => {
-      let compStr = '';
-      if (p.components) {
-        compStr = Object.keys(p.components)
-          .filter(c => p.components[c] && p.components[c].yes)
-          .map(c => {
-            const st = p.components[c];
-            const sub = (st.subtypes && st.subtypes.length > 0) ? st.subtypes.join(', ') : (st.subtype||'');
-            return sub ? `${c.split('/')[0].trim()} (${sub})` : c.split('/')[0].trim();
-          }).join(' · ');
+    records.forEach(function(rec, recIdx) {
+      var parts = (rec.parts && rec.parts.length > 0) ? rec.parts : [{
+        partnum: rec.partnum || '—',
+        compState: null, components: rec.components || null,
+        testState: null,  tests: rec.tests || null,
+      }];
+      var recStatus = getStatus(rec);
+      var dateStr = (function(){
+        try { return new Date(rec.date+'T12:00:00').toLocaleDateString('es-MX'); }
+        catch(e) { return rec.date||'—'; }
+      })();
+
+      parts.forEach(function(p, pi) {
+        var pn = p.partnum || '—';
+        var recLabel = parts.length > 1
+          ? 'REGISTRO #'+String(recIdx+1).padStart(3,'0')+'  |  PN: '+pn+'  (parte '+(pi+1)+'/'+parts.length+')'
+          : 'REGISTRO #'+String(recIdx+1).padStart(3,'0')+'  |  PN: '+pn;
+
+        // Record header row (navy)
+        aoa.push([recLabel,'','','']);
+        merges.push(mergeRow(clRow,0,3));
+        rowMeta.push({r:clRow,type:'recHdr'});
+        clRow++;
+
+        // Meta row (cell, date, tester…)
+        var metaStr = 'Celda: '+(rec.cell||'—')+'  ·  Fecha: '+dateStr+'  ·  Tester: '+(rec.tester||'—')+'  ·  Inspector: '+(rec.inspector||'—')+'  ·  Cliente: '+(rec.client||'—');
+        aoa.push([metaStr,'','',recStatus]);
+        merges.push({s:{r:clRow,c:0},e:{r:clRow,c:2}});
+        rowMeta.push({r:clRow,type:'metaRow',status:recStatus});
+        clRow++;
+
+        // Components section header
+        aoa.push(['#','CATEGORÍA DE COMPONENTE','ESTADO','SUBTIPOS DETECTADOS']);
+        rowMeta.push({r:clRow,type:'secHdr',color:C.blue});
+        clRow++;
+
+        var compState = p.compState || p.components || {};
+        COMP_CATS.forEach(function(cat, ci) {
+          var cs = compState[cat] || {};
+          var hasYes = !!cs.yes;
+          var hasNo  = !!cs.no;
+          var subs = (cs.subtypes && cs.subtypes.length) ? cs.subtypes.join(', ') : (cs.subtype||'');
+          var statusTxt, rowType;
+          if (hasYes)      { statusTxt = '✓  SÍ';  rowType = 'compYes'; }
+          else if (hasNo)  { statusTxt = '✗  NO';  rowType = 'compNo';  }
+          else             { statusTxt = '—';       rowType = 'compNA';  }
+          aoa.push([ci+1, cat, statusTxt, hasYes && subs ? subs : '']);
+          rowMeta.push({r:clRow, type:rowType, idx:ci});
+          clRow++;
+        });
+
+        // Tests section header
+        aoa.push(['#','PRUEBA REALIZADA','ESTADO','']);
+        merges.push({s:{r:clRow,c:2},e:{r:clRow,c:3}});
+        rowMeta.push({r:clRow,type:'secHdr',color:C.teal});
+        clRow++;
+
+        var testState = p.testState || p.tests || {};
+        TESTS.forEach(function(tst, ti) {
+          var done = !!testState[tst];
+          aoa.push([ti+1, tst, done ? '✓  REALIZADA' : '—  N/A', '']);
+          merges.push({s:{r:clRow,c:2},e:{r:clRow,c:3}});
+          rowMeta.push({r:clRow, type: done ? 'testYes' : 'testNA', idx:ti});
+          clRow++;
+        });
+
+        // Resultado section header
+        aoa.push(['RESULTADO DE INSPECCIÓN','','','']);
+        merges.push(mergeRow(clRow,0,3));
+        rowMeta.push({r:clRow,type:'secHdr',color:C.amber});
+        clRow++;
+
+        var failVal  = (rec.fail && rec.fail.toLowerCase()!=='n/a' && rec.fail.trim()!=='') ? rec.fail : 'Sin falla detectada';
+        var solVal   = (rec.solution && rec.solution.toLowerCase()!=='n/a') ? rec.solution : '—';
+        var detStr2  = (rec.defectDetection && rec.defectDetection.length) ? rec.defectDetection.join(' · ') : '—';
+        var opStr2   = (rec.defectOperator  && rec.defectOperator.length)  ? rec.defectOperator.join(' · ')  : '—';
+        var resultRows = [
+          ['FALLA DETECTADA', failVal],
+          ['SOLUCIÓN',        solVal],
+          ['DEFECTO TESTER',  detStr2],
+          ['DEFECTO OPERADOR',opStr2],
+          ['ESTATUS',         recStatus],
+        ];
+        resultRows.forEach(function(row2) {
+          aoa.push([row2[0], row2[1],'','']);
+          merges.push({s:{r:clRow,c:1},e:{r:clRow,c:3}});
+          rowMeta.push({r:clRow, type:'result', isStatus:row2[0]==='ESTATUS', status:recStatus});
+          clRow++;
+        });
+
+        // Blank separator
+        aoa.push(['','','','']);
+        clRow++;
+      });
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{wch:6},{wch:38},{wch:16},{wch:38}];
+    ws['!merges'] = merges;
+
+    rowMeta.forEach(function(rm) {
+      var r = rm.r;
+      function xref(c) { return XLSX.utils.encode_cell({r:r,c:c}); }
+      if (rm.type === 'title') {
+        if(ws[xref(0)]) ws[xref(0)].s = stTitle();
+      } else if (rm.type === 'sub') {
+        if(ws[xref(0)]) ws[xref(0)].s = stSub();
+      } else if (rm.type === 'recHdr') {
+        if(ws[xref(0)]) ws[xref(0)].s = st(C.white, C.navy, {bold:true, sz:11, halign:'left', wrap:false});
+      } else if (rm.type === 'metaRow') {
+        if(ws[xref(0)]) ws[xref(0)].s = st(C.navyLt, C.navyMd, {sz:9, halign:'left', wrap:false});
+        if(ws[xref(3)]) ws[xref(3)].s = stBadge(rm.status);
+      } else if (rm.type === 'secHdr') {
+        [0,1,2,3].forEach(function(c){ if(ws[xref(c)]) ws[xref(c)].s=stHdr(rm.color||C.blue); });
+      } else if (rm.type === 'compYes') {
+        var bg = rm.idx%2===0 ? C.greenPale : C.greenLt;
+        if(ws[xref(0)]) ws[xref(0)].s = st(C.gray,  bg, {sz:9,  halign:'center', wrap:false});
+        if(ws[xref(1)]) ws[xref(1)].s = st(C.navy,  bg, {sz:10, bold:true});
+        if(ws[xref(2)]) ws[xref(2)].s = st(C.green, bg, {sz:10, bold:true, halign:'center', wrap:false});
+        if(ws[xref(3)]) ws[xref(3)].s = st(C.gray,  bg, {sz:9,  wrap:true});
+      } else if (rm.type === 'compNo') {
+        var bg = rm.idx%2===0 ? C.redPale : C.redLt;
+        if(ws[xref(0)]) ws[xref(0)].s = st(C.gray, bg, {sz:9,  halign:'center', wrap:false});
+        if(ws[xref(1)]) ws[xref(1)].s = st(C.red,  bg, {sz:10});
+        if(ws[xref(2)]) ws[xref(2)].s = st(C.red,  bg, {sz:10, bold:true, halign:'center', wrap:false});
+        if(ws[xref(3)]) ws[xref(3)].s = st(C.gray, bg, {sz:9});
+      } else if (rm.type === 'compNA') {
+        var bg = rm.idx%2===0 ? C.grayPale : C.white;
+        if(ws[xref(0)]) ws[xref(0)].s = st(C.gray, bg, {sz:9,  halign:'center', wrap:false});
+        if(ws[xref(1)]) ws[xref(1)].s = st(C.gray, bg, {sz:10});
+        if(ws[xref(2)]) ws[xref(2)].s = st(C.gray, bg, {sz:10, halign:'center', wrap:false});
+        if(ws[xref(3)]) ws[xref(3)].s = st(C.gray, bg, {sz:9});
+      } else if (rm.type === 'testYes') {
+        var bg = rm.idx%2===0 ? C.tealPale : C.tealLt;
+        if(ws[xref(0)]) ws[xref(0)].s = st(C.gray, bg, {sz:9,  halign:'center', wrap:false});
+        if(ws[xref(1)]) ws[xref(1)].s = st(C.navy, bg, {sz:10, bold:true});
+        if(ws[xref(2)]) ws[xref(2)].s = st(C.teal, bg, {sz:10, bold:true, halign:'center', wrap:false});
+      } else if (rm.type === 'testNA') {
+        var bg = rm.idx%2===0 ? C.grayPale : C.white;
+        if(ws[xref(0)]) ws[xref(0)].s = st(C.gray, bg, {sz:9,  halign:'center', wrap:false});
+        if(ws[xref(1)]) ws[xref(1)].s = st(C.gray, bg, {sz:10});
+        if(ws[xref(2)]) ws[xref(2)].s = st(C.gray, bg, {sz:10, halign:'center', wrap:false});
+      } else if (rm.type === 'result') {
+        if(ws[xref(0)]) ws[xref(0)].s = stLabel(C.amberLt);
+        if(ws[xref(1)]) ws[xref(1)].s = rm.isStatus ? stBadge(rm.status) : stVal(C.amberPale);
       }
-      const testStr = p.tests ? TESTS.filter(t => p.tests[t]).join(' · ') : '';
-      const detStr = (r.defectDetection && r.defectDetection.length>0) ? r.defectDetection.join(' · ') : '—';
-      const opStr  = (r.defectOperator && r.defectOperator.length>0) ? r.defectOperator.join(' · ') : '—';
-      aoa_reg.push([
-        `#${String(idx+1).padStart(3,'0')}`,
-        dateStr, timeStr,
-        r.cell||'', r.slot||'', r.inspector||'', r.client||'',
-        p.partnum||'', compStr, testStr,
-        r.fail||'N/A', detStr, opStr, status, r.solution||'N/A', ''
-      ]);
     });
-  });
 
-  const ws_reg = XLSX.utils.aoa_to_sheet(aoa_reg);
-  ws_reg['!cols'] = [
-    {wch:7},{wch:12},{wch:8},{wch:12},{wch:6},{wch:14},{wch:12},
-    {wch:18},{wch:32},{wch:32},{wch:34},{wch:30},{wch:30},{wch:13},{wch:34},{wch:20}
-  ];
-  ws_reg['!rows'] = [{hpt:28},{hpt:16},{hpt:28}];
-  ws_reg['!merges'] = [
-    {s:{r:0,c:0},e:{r:0,c:REG_HEADERS.length-1}},
-    {s:{r:1,c:0},e:{r:1,c:REG_HEADERS.length-1}}
-  ];
-  // Style title rows
-  if(ws_reg['A1']) ws_reg['A1'].s = titleStyle();
-  if(ws_reg['A2']) ws_reg['A2'].s = { font:{name:'Arial',sz:9,italic:true,color:{rgb:C.gray}},
-    fill:{patternType:'solid',fgColor:{rgb:C.grayLt}}, alignment:{horizontal:'center'} };
-  // Header row (row index 2)
-  REG_HEADERS.forEach((_,ci) => {
-    const ref = XLSX.utils.encode_cell({r:2,c:ci});
-    if(ws_reg[ref]) ws_reg[ref].s = hdr(C.white, C.blue, true, 10);
-  });
-  // Data rows
-  for(let ri=3; ri<aoa_reg.length; ri++){
-    const alt = (ri%2===0);
-    const bg = alt ? 'F9FAFB' : C.white;
-    const statusVal = aoa_reg[ri][13];
-    REG_HEADERS.forEach((_,ci) => {
-      const ref = XLSX.utils.encode_cell({r:ri,c:ci});
-      if(!ws_reg[ref]) return;
-      if(ci === 13) { // ESTATUS
-        const sc = statusVal==='OK' ? {fg:C.green,bg:C.greenLt} :
-                   statusVal==='CON FALLA' ? {fg:C.red,bg:C.redLt} : {fg:C.blue,bg:C.blueLt};
-        ws_reg[ref].s = cell(sc.fg, sc.bg, true, 9, 'center', false);
-      } else if(ci === 11) { // DEFECTO DETECCIÓN
-        ws_reg[ref].s = cell(aoa_reg[ri][11]==='—'?C.gray:'92400E', aoa_reg[ri][11]==='—'?bg:'FEF3C7', false, 9, 'left', true);
-      } else if(ci === 12) { // DEFECTO OPERADOR
-        ws_reg[ref].s = cell(aoa_reg[ri][12]==='—'?C.gray:'1E40AF', aoa_reg[ri][12]==='—'?bg:'DBEAFE', false, 9, 'left', true);
-      } else if(ci===0){
-        ws_reg[ref].s = cell(C.gray, bg, false, 9, 'center', false);
-      } else {
-        ws_reg[ref].s = cell('111827', bg, false, 9, ci<=3?'center':'left', true);
+    XLSX.utils.book_append_sheet(wb, ws, 'CHECKLIST');
+  }
+
+  // ════════════════════════════════════════════════════════
+  // HOJA 3: REGISTROS (summary table)
+  // ════════════════════════════════════════════════════════
+  {
+    const HDRS = ['#','FECHA','HORA','CELL','SLOT','INSPECTOR','CLIENTE',
+      'PART NUMBER','COMPONENTES','PRUEBAS','FALLA','DEF. TESTER','DEF. OPERADOR','ESTATUS','SOLUCIÓN'];
+    const aoa = [];
+    aoa.push(['TELAMON  ·  REGISTROS DE INSPECCIÓN  |  '+today,...Array(HDRS.length-1).fill('')]);
+    aoa.push(['REG-QC-TLM-001  ·  Rev. A  ·  Total: '+records.length+' registros',...Array(HDRS.length-1).fill('')]);
+    aoa.push(HDRS);
+
+    records.forEach(function(r, idx) {
+      var status = getStatus(r);
+      var dateStr = (function(){ try{return new Date(r.date+'T12:00:00').toLocaleDateString('es-MX');}catch(e){return r.date||'';} })();
+      var timeStr = r.ts ? new Date(r.ts).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '—';
+      var parts = (r.parts && r.parts.length > 0) ? r.parts : [{partnum:r.partnum||'',compState:null,components:r.components||null,testState:null,tests:r.tests||null}];
+      parts.forEach(function(p) {
+        var cs = p.compState || p.components || {};
+        var compLines = Object.keys(cs).filter(function(k){return cs[k]&&cs[k].yes;}).map(function(k){
+          var s2=cs[k]; var sub=(s2.subtypes&&s2.subtypes.length)?s2.subtypes.join(', '):(s2.subtype||'');
+          return sub ? '✓ '+k.split('/')[0].trim()+' ('+sub+')' : '✓ '+k.split('/')[0].trim();
+        }).join('\n')||'—';
+        var ts2 = p.testState || p.tests || {};
+        var testLines = TESTS.filter(function(t){return ts2[t];}).map(function(t){return '✓ '+t;}).join('\n')||'—';
+        var detStr = (r.defectDetection&&r.defectDetection.length) ? r.defectDetection.join('\n') : '—';
+        var opStr  = (r.defectOperator &&r.defectOperator.length)  ? r.defectOperator.join('\n')  : '—';
+        aoa.push([
+          '#'+String(idx+1).padStart(3,'0'), dateStr, timeStr,
+          r.cell||'', r.slot||'', r.inspector||'', r.client||'',
+          p.partnum||'', compLines, testLines,
+          r.fail||'N/A', detStr, opStr, status, r.solution||'N/A',
+        ]);
+      });
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{wch:6},{wch:11},{wch:7},{wch:10},{wch:5},{wch:12},{wch:10},
+      {wch:18},{wch:36},{wch:34},{wch:34},{wch:30},{wch:30},{wch:13},{wch:34}];
+    ws['!merges'] = [mergeRow(0,0,HDRS.length-1), mergeRow(1,0,HDRS.length-1)];
+    if(ws['A1']) ws['A1'].s=stTitle();
+    if(ws['A2']) ws['A2'].s=stSub();
+    HDRS.forEach(function(_,ci){
+      var ref=XLSX.utils.encode_cell({r:2,c:ci});
+      if(ws[ref]) ws[ref].s=stHdr(C.blue);
+    });
+    for(var ri=3; ri<aoa.length; ri++){
+      var alt=ri%2===0; var rbg=alt?C.grayPale:C.white;
+      var rowStatus=aoa[ri][13];
+      HDRS.forEach(function(_,ci){
+        var ref=XLSX.utils.encode_cell({r:ri,c:ci});
+        if(!ws[ref]) return;
+        if(ci===13)      ws[ref].s=stBadge(rowStatus);
+        else if(ci===0)  ws[ref].s=st(C.gray,rbg,{sz:9,halign:'center',wrap:false});
+        else if(ci<=3)   ws[ref].s=st('111827',rbg,{sz:9,halign:'center',wrap:false});
+        else             ws[ref].s=st('111827',rbg,{sz:9,wrap:true});
+      });
+    }
+    XLSX.utils.book_append_sheet(wb, ws, 'REGISTROS');
+  }
+
+  // ════════════════════════════════════════════════════════
+  // HOJA 4: DASHBOARD
+  // ════════════════════════════════════════════════════════
+  {
+    const total    = records.length;
+    const totalPNs = records.reduce(function(a,r){return a+(r.parts?r.parts.length:1);},0);
+    const okCount  = records.filter(function(r){return getStatus(r)==='OK';}).length;
+    const failCnt  = records.filter(function(r){return getStatus(r)==='CON FALLA';}).length;
+    const solvedCnt= records.filter(function(r){return getStatus(r)==='SOLUCIONADO';}).length;
+    const fpy      = total>0 ? (okCount/total*100).toFixed(1)+'%' : '—';
+    const testers  = [...new Set(records.map(function(r){return r.tester;}))];
+    const failFreq = {};
+    records.forEach(function(r){
+      if(r.fail&&r.fail.toLowerCase()!=='n/a'&&r.fail.trim()!=='')
+        r.fail.split(',').forEach(function(f){var ff=f.trim();failFreq[ff]=(failFreq[ff]||0)+1;});
+    });
+    const failSorted = Object.entries(failFreq).sort(function(a,b){return b[1]-a[1];});
+    const tStats = {};
+    records.forEach(function(r){
+      var t=r.tester||'?'; if(!tStats[t]) tStats[t]={total:0,ok:0,fail:0,solved:0};
+      tStats[t].total++;
+      var s=getStatus(r);
+      if(s==='OK') tStats[t].ok++; else if(s==='CON FALLA') tStats[t].fail++; else tStats[t].solved++;
+    });
+
+    const aoa=[];
+    aoa.push(['TELAMON  ·  DASHBOARD DE CALIDAD  |  KPIs OPERATIVOS','','','','','']);
+    aoa.push(['Actualizado: '+today+'  ·  Generado por: Telamon Inspector v2.0','','','','','']);
+    aoa.push(['']);
+    aoa.push(['KPI','VALOR','','RESUMEN POR ESTATUS','CANTIDAD','']);
+    aoa.push(['Total Inspeccionados', total,'','OK (Sin Falla)',okCount,'']);
+    aoa.push(['Total Part Numbers',   totalPNs,'','Con Falla Activa',failCnt,'']);
+    aoa.push(['Sin Falla (OK)',        okCount,'','Solucionados',solvedCnt,'']);
+    aoa.push(['Con Falla Activa',      failCnt,'','First Pass Yield',fpy,'']);
+    aoa.push(['Solucionados',          solvedCnt,'','Testers Activos',testers.length,'']);
+    aoa.push(['First Pass Yield',      fpy,'','','','']);
+    aoa.push(['']);
+    aoa.push(['TESTER','TOTAL','OK','CON FALLA','SOLUCIONADO','% OK']);
+    const tStatStart = aoa.length;
+    Object.entries(tStats).sort(function(a,b){return b[1].total-a[1].total;}).forEach(function(e){
+      var t=e[0], s=e[1]; var pct=s.total>0?(s.ok/s.total*100).toFixed(1)+'%':'—';
+      aoa.push([t,s.total,s.ok,s.fail,s.solved,pct]);
+    });
+    aoa.push(['']);
+    const failHdrRow = aoa.length;
+    aoa.push(['FALLA DETECTADA','OCURRENCIAS','% DEL TOTAL','','','']);
+    failSorted.slice(0,10).forEach(function(e){
+      var pct=total>0?(e[1]/total*100).toFixed(1)+'%':'—';
+      aoa.push([e[0],e[1],pct,'','','']);
+    });
+    if(!failSorted.length) aoa.push(['Sin fallas registradas','—','—','','','']);
+
+    const ws=XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols']=[{wch:30},{wch:14},{wch:4},{wch:28},{wch:12},{wch:10}];
+    ws['!merges']=[mergeRow(0,0,5),mergeRow(1,0,5)];
+    if(ws['A1']) ws['A1'].s=stTitle();
+    if(ws['A2']) ws['A2'].s=stSub();
+
+    // KPI table
+    ['A','B','D','E'].forEach(function(c){var ref=c+'4';if(ws[ref])ws[ref].s=stHdr(C.navyMd);});
+    for(var ki=0;ki<6;ki++){
+      var kr=5+ki; var kbg=ki%2===0?C.grayPale:C.white;
+      if(ws['A'+kr]) ws['A'+kr].s=st(C.navy,kbg,{bold:true,sz:10});
+      if(ws['B'+kr]) ws['B'+kr].s=stCtr(C.blue,kbg);
+      if(ws['D'+kr]) ws['D'+kr].s=st(C.navy,kbg,{sz:10});
+      if(ws['E'+kr]){
+        var kcolors=[[C.green,C.greenLt],[C.red,C.redLt],[C.blue,C.blueLt],[C.amber,C.amberLt],[C.gray,C.grayLt],[C.gray,C.grayLt]];
+        ws['E'+kr].s=stCtr(kcolors[ki][0],kcolors[ki][1]);
       }
+    }
+    // Tester table header (row index 11)
+    ['A','B','C','D','E','F'].forEach(function(c){var ref=c+'12';if(ws[ref])ws[ref].s=stHdr(C.blue);});
+    for(var ti2=tStatStart;ti2<failHdrRow-1;ti2++){
+      var tr=ti2+1; var tbg=ti2%2===0?C.grayPale:C.white;
+      var tpct=parseFloat(String(aoa[ti2][5]||'0'));
+      var tfg=tpct>=90?C.green:tpct>=80?C.amber:C.red;
+      var tpbg=tpct>=90?C.greenLt:tpct>=80?C.amberLt:C.redLt;
+      ['A','B','C','D','E','F'].forEach(function(c,ci){
+        var ref=c+tr; if(!ws[ref]) return;
+        if(ci===5) ws[ref].s=stCtr(tfg,tpbg);
+        else ws[ref].s=st(ci===0?C.navy:'111827',tbg,{sz:ci===0?10:9,bold:ci===0,halign:ci===0?'left':'center'});
+      });
+    }
+    // Fail table header
+    ['A','B','C'].forEach(function(c){var ref=c+(failHdrRow+1);if(ws[ref])ws[ref].s=stHdr(C.red);});
+    for(var fi2=failHdrRow+1;fi2<aoa.length;fi2++){
+      var fr=fi2+1; var fbg=fi2%2===0?C.redPale:C.white;
+      if(ws['A'+fr]) ws['A'+fr].s=st('111827',fbg,{sz:9,wrap:true});
+      if(ws['B'+fr]) ws['B'+fr].s=stCtr(C.red,C.redLt);
+      if(ws['C'+fr]) ws['C'+fr].s=stCtr(C.amber,C.amberLt);
+    }
+    XLSX.utils.book_append_sheet(wb, ws, 'DASHBOARD');
+  }
+
+  // ════════════════════════════════════════════════════════
+  // HOJA 5: DEFECTOS
+  // ════════════════════════════════════════════════════════
+  {
+    const detCounter={}, opCounter={};
+    var totalDet=0, totalOp=0;
+    records.forEach(function(r){
+      (r.defectDetection||[]).forEach(function(d){detCounter[d]=(detCounter[d]||0)+1;totalDet++;});
+      (r.defectOperator ||[]).forEach(function(d){opCounter[d] =(opCounter[d] ||0)+1;totalOp++;});
     });
+    var totalAll=totalDet+totalOp||1;
+    const aoa=[];
+    aoa.push(['TELAMON  ·  ANÁLISIS DE DEFECTOS  |  DETECCIÓN vs OPERADOR','','','']);
+    aoa.push(['Total defectos: '+(totalDet+totalOp)+'  ·  Exportado: '+today,'','','']);
+    aoa.push(['']);
+    aoa.push(['CATEGORÍA','CANTIDAD','% DEL TOTAL','']);
+    aoa.push(['Defectos de Detección (Tester)',totalDet,(totalDet/totalAll*100).toFixed(1)+'%','']);
+    aoa.push(['Defectos de Operador',           totalOp, (totalOp/totalAll*100).toFixed(1)+'%','']);
+    aoa.push(['']);
+    var detHdr=aoa.length;
+    aoa.push(['DEFECTO DE DETECCIÓN (TESTER)','OCURRENCIAS','% DE DETECCIÓN','']);
+    var detSorted=Object.entries(detCounter).sort(function(a,b){return b[1]-a[1];});
+    if(!detSorted.length) aoa.push(['Sin defectos registrados','—','—','']);
+    detSorted.forEach(function(e){aoa.push([e[0],e[1],(e[1]/(totalDet||1)*100).toFixed(1)+'%','']);});
+    aoa.push(['']);
+    var opHdr=aoa.length;
+    aoa.push(['DEFECTO DE OPERADOR','OCURRENCIAS','% DE OPERADOR','']);
+    var opSorted=Object.entries(opCounter).sort(function(a,b){return b[1]-a[1];});
+    if(!opSorted.length) aoa.push(['Sin defectos registrados','—','—','']);
+    opSorted.forEach(function(e){aoa.push([e[0],e[1],(e[1]/(totalOp||1)*100).toFixed(1)+'%','']);});
+
+    const ws=XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols']=[{wch:44},{wch:14},{wch:16},{wch:4}];
+    ws['!merges']=[mergeRow(0,0,3),mergeRow(1,0,3)];
+    if(ws['A1']) ws['A1'].s=stTitle();
+    if(ws['A2']) ws['A2'].s=stSub();
+    ['A4','B4','C4'].forEach(function(r){if(ws[r])ws[r].s=stHdr(C.navyMd);});
+    if(ws['A5']) ws['A5'].s=st('92400E',C.amberLt,{bold:true,sz:10});
+    if(ws['B5']) ws['B5'].s=stCtr('92400E',C.amberLt);
+    if(ws['C5']) ws['C5'].s=stCtr('92400E',C.amberLt);
+    if(ws['A6']) ws['A6'].s=st('1E40AF',C.blueLt,{bold:true,sz:10});
+    if(ws['B6']) ws['B6'].s=stCtr('1E40AF',C.blueLt);
+    if(ws['C6']) ws['C6'].s=stCtr('1E40AF',C.blueLt);
+    ['A','B','C'].forEach(function(c){var ref=c+(detHdr+1);if(ws[ref])ws[ref].s=stHdr(C.amber);});
+    for(var di=detHdr+1;di<opHdr-1;di++){
+      var dbg=di%2===0?C.white:C.amberPale;
+      if(ws['A'+(di+1)]) ws['A'+(di+1)].s=st('111827',dbg,{sz:9,wrap:true});
+      if(ws['B'+(di+1)]) ws['B'+(di+1)].s=stCtr('92400E',C.amberLt);
+      if(ws['C'+(di+1)]) ws['C'+(di+1)].s=stCtr('92400E',dbg);
+    }
+    ['A','B','C'].forEach(function(c){var ref=c+(opHdr+1);if(ws[ref])ws[ref].s=stHdr(C.blue);});
+    for(var oi=opHdr+1;oi<aoa.length;oi++){
+      var obg=oi%2===0?C.white:C.bluePale;
+      if(ws['A'+(oi+1)]) ws['A'+(oi+1)].s=st('111827',obg,{sz:9,wrap:true});
+      if(ws['B'+(oi+1)]) ws['B'+(oi+1)].s=stCtr('1E40AF',C.blueLt);
+      if(ws['C'+(oi+1)]) ws['C'+(oi+1)].s=stCtr('1E40AF',obg);
+    }
+    XLSX.utils.book_append_sheet(wb, ws, 'DEFECTOS');
   }
-  XLSX.utils.book_append_sheet(wb, ws_reg, 'REGISTRO');
 
-  // ════════════════════════════════════════
-  // HOJA 3: DASHBOARD (KPIs reales)
-  // ════════════════════════════════════════
-  const total = records.length;
-  const totalPNs = records.reduce((a,r)=>a+(r.parts?r.parts.length:1),0);
-  const okCount = records.filter(r=>{ const hf=r.fail&&r.fail.toLowerCase()!=='n/a'&&r.fail.trim()!==''; return !hf; }).length;
-  const failCount = records.filter(r=>{ const hf=r.fail&&r.fail.toLowerCase()!=='n/a'&&r.fail.trim()!==''; return hf&&!r.solved; }).length;
-  const solvedCount = records.filter(r=>{ const hf=r.fail&&r.fail.toLowerCase()!=='n/a'&&r.fail.trim()!==''; return hf&&r.solved; }).length;
-  const fpy = total>0 ? (okCount/total*100).toFixed(1)+'%' : '0.0%';
-  const testersSet = [...new Set(records.map(r=>r.tester))];
-
-  // Falla frequency
-  const failFreq = {};
-  records.forEach(r=>{ if(r.fail&&r.fail.toLowerCase()!=='n/a'&&r.fail.trim()!==''){
-    r.fail.split(',').forEach(f=>{ const ff=f.trim(); failFreq[ff]=(failFreq[ff]||0)+1; });
-  }});
-  const failSorted = Object.entries(failFreq).sort((a,b)=>b[1]-a[1]);
-
-  // Tester stats
-  const tStats = {};
-  records.forEach(r=>{
-    const t=r.tester||'?';
-    if(!tStats[t]) tStats[t]={total:0,ok:0,fail:0,solved:0};
-    tStats[t].total++;
-    const hf=r.fail&&r.fail.toLowerCase()!=='n/a'&&r.fail.trim()!=='';
-    if(!hf) tStats[t].ok++;
-    else if(!r.solved) tStats[t].fail++;
-    else tStats[t].solved++;
-  });
-
-  const aoa_dash = [];
-  aoa_dash.push(['TELAMON  |  DASHBOARD DE CALIDAD  —  KPIs OPERATIVOS','','','','','','']);
-  aoa_dash.push([`Actualizado: ${today}  |  Generado por: Telamon Inspector v1.0`,'','','','','','']);
-  aoa_dash.push(['']);
-  aoa_dash.push(['KPI','VALOR','','RESUMEN POR ESTATUS','CANTIDAD','','']);
-  aoa_dash.push(['Total Inspeccionados', total,'','OK (Sin Falla)', okCount,'','']);
-  aoa_dash.push(['Total Part Numbers', totalPNs,'','Con Falla Activa', failCount,'','']);
-  aoa_dash.push(['Sin Falla (OK)', okCount,'','Solucionados', solvedCount,'','']);
-  aoa_dash.push(['Con Falla Activa', failCount,'','First Pass Yield', fpy,'','']);
-  aoa_dash.push(['Solucionados', solvedCount,'','Testers Activos', testersSet.length,'','']);
-  aoa_dash.push(['First Pass Yield', fpy,'','','','','']);
-  aoa_dash.push(['']);
-  aoa_dash.push(['PRODUCCIÓN POR TESTER','TOTAL','OK','CON FALLA','SOLUCIONADO','% OK','']);
-  Object.entries(tStats).sort((a,b)=>b[1].total-a[1].total).forEach(([t,s])=>{
-    const pct = s.total>0 ? (s.ok/s.total*100).toFixed(1)+'%' : '0.0%';
-    aoa_dash.push([t, s.total, s.ok, s.fail, s.solved, pct,'']);
-  });
-  aoa_dash.push(['']);
-  const fRow = aoa_dash.length;
-  aoa_dash.push(['TOP FALLAS DETECTADAS','OCURRENCIAS','% DEL TOTAL','','','','']);
-  failSorted.slice(0,10).forEach(([f,c])=>{
-    const pct = total>0 ? (c/total*100).toFixed(1)+'%' : '0%';
-    aoa_dash.push([f, c, pct,'','','','']);
-  });
-  if(failSorted.length===0) aoa_dash.push(['Sin fallas registradas','—','—','','','','']);
-
-  const ws_dash = XLSX.utils.aoa_to_sheet(aoa_dash);
-  ws_dash['!cols'] = [{wch:30},{wch:14},{wch:4},{wch:28},{wch:14},{wch:12},{wch:4}];
-  ws_dash['!merges'] = [
-    {s:{r:0,c:0},e:{r:0,c:6}},{s:{r:1,c:0},e:{r:1,c:6}}
-  ];
-  if(ws_dash['A1']) ws_dash['A1'].s = titleStyle();
-  if(ws_dash['A2']) ws_dash['A2'].s = { font:{name:'Arial',sz:9,italic:true,color:{rgb:C.gray}}, fill:{patternType:'solid',fgColor:{rgb:C.grayLt}}, alignment:{horizontal:'center'} };
-
-  // KPI section headers
-  ['A4','B4','D4','E4'].forEach(ref=>{ if(ws_dash[ref]) ws_dash[ref].s=hdr(C.white,C.hdr2); });
-  // KPI data rows
-  for(let ri=4;ri<=9;ri++){
-    const bg=(ri%2===0)?C.white:'F9FAFB';
-    ['A','B'].forEach(col=>{
-      const ref=col+(ri+1); if(ws_dash[ref]) ws_dash[ref].s=cell('111827',bg,col==='A',10,'left',false);
+  // ════════════════════════════════════════════════════════
+  // HOJA 6: CATÁLOGOS
+  // ════════════════════════════════════════════════════════
+  {
+    const aoa=[];
+    aoa.push(['TELAMON  ·  CATÁLOGOS DE REFERENCIA  |  WIRE HARNESS','','','']);
+    aoa.push(['Rev. A  ·  '+today,'','','']);
+    aoa.push(['']);
+    aoa.push(['COMPONENTES','SUBTIPOS','# SUB','']);
+    var compEntries=Object.entries(COMPONENTS_DICT);
+    compEntries.forEach(function(e,i){
+      aoa.push([e[0], e[1].join(' · '), e[1].length, '']);
     });
-    ['D','E'].forEach(col=>{
-      const ref=col+(ri+1); if(!ws_dash[ref]) return;
-      const val = ws_dash[ref].v;
-      let fg='111827', bg2=bg;
-      if(col==='E'){
-        const v=String(val||'');
-        if(ri===4) {fg=C.green;bg2=C.greenLt;}
-        else if(ri===5) {fg=C.red;bg2=C.redLt;}
-        else if(ri===6) {fg=C.blue;bg2=C.blueLt;}
-        else if(ri===7) {fg=C.amber;bg2=C.amberLt;}
-      }
-      ws_dash[ref].s=cell(fg,bg2,col==='E',10,col==='E'?'center':'left',false);
-    });
+    aoa.push(['']);
+
+    const TESTS_INFO=[
+      ['Continuidad Eléctrica','Eléctrica'],['Cortocircuito / Aislamiento','Eléctrica'],
+      ['Caída de Tensión','Eléctrica'],['Hipot (Dieléctrico/Alta Tensión)','Eléctrica'],
+      ['Push-Pull (Extracción)','Mecánica'],['Push-Out Force (Empuje Terminal)','Mecánica'],
+      ['Prueba de Fuga (Leak Test)','Sellado'],['Verificación Dimensional / Ruteo','Dimensional'],
+      ['Detección de Candados (TPA/CPA)','Visual/Sensor'],['Detección de Clips / Sujeción','Visual/Sensor'],
+      ['Verificación de Color (Visión)','Visual/Sensor'],['Presencia de Cinta / Spot Tape','Visual/Sensor'],
+      ['Alineación de Terminal','Dimensional'],['Escaneo Barcode','Trazabilidad'],['Poka-Yoke','Error Proofing'],
+    ];
+    var testHdrRow=aoa.length;
+    aoa.push(['PRUEBA','TIPO','','']);
+    TESTS_INFO.forEach(function(e){aoa.push([e[0],e[1],'','']);});
+    aoa.push(['']);
+
+    const FAIL_CATS=[
+      ['Terminal no insertada (Push-back)','Ensamble Terminal'],
+      ['Cables invertidos (Miswire)','Ruteo'],
+      ['Circuito abierto / Sin continuidad','Eléctrica'],
+      ['Cortocircuito','Eléctrica'],
+      ['Falta de componente (Clip, Sello, TPA)','Componente Faltante'],
+      ['Daño en aislamiento / Cobre expuesto','Daño Físico'],
+      ['Conector dañado / Roto','Daño Físico'],
+      ['Ruteo incorrecto / Longitud','Ruteo'],
+      ['Encintado defectuoso / Faltante','Encintado'],
+      ['Terminal dañada / Deformada','Daño Físico'],
+    ];
+    var failHdrRow2=aoa.length;
+    aoa.push(['TIPO DE FALLA','CATEGORÍA','','']);
+    FAIL_CATS.forEach(function(e){aoa.push([e[0],e[1],'','']);});
+
+    const ws=XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols']=[{wch:36},{wch:60},{wch:8},{wch:4}];
+    ws['!merges']=[mergeRow(0,0,3),mergeRow(1,0,3)];
+    if(ws['A1']) ws['A1'].s=stTitle();
+    if(ws['A2']) ws['A2'].s=stSub();
+
+    // Components
+    ['A4','B4','C4'].forEach(function(r){if(ws[r])ws[r].s=stHdr(C.blue);});
+    for(var ci3=0;ci3<compEntries.length;ci3++){
+      var cr=5+ci3; var cbg=ci3%2===0?C.bluePale:C.white;
+      if(ws['A'+cr]) ws['A'+cr].s=st(C.navy,cbg,{bold:true,sz:10,wrap:false});
+      if(ws['B'+cr]) ws['B'+cr].s=st(C.gray,cbg,{sz:9,wrap:true});
+      if(ws['C'+cr]) ws['C'+cr].s=stCtr(C.blue,C.blueLt);
+    }
+    // Tests
+    ['A','B'].forEach(function(c){var ref=c+(testHdrRow+1);if(ws[ref])ws[ref].s=stHdr(C.teal);});
+    for(var ti3=0;ti3<TESTS_INFO.length;ti3++){
+      var tr3=testHdrRow+2+ti3; var tbg3=ti3%2===0?C.tealPale:C.white;
+      if(ws['A'+tr3]) ws['A'+tr3].s=st(C.navy,tbg3,{sz:10,wrap:false});
+      if(ws['B'+tr3]) ws['B'+tr3].s=st(C.teal,tbg3,{sz:9,halign:'center',wrap:false});
+    }
+    // Failures
+    ['A','B'].forEach(function(c){var ref=c+(failHdrRow2+1);if(ws[ref])ws[ref].s=stHdr(C.red);});
+    for(var fi3=0;fi3<FAIL_CATS.length;fi3++){
+      var fr3=failHdrRow2+2+fi3; var fbg3=fi3%2===0?C.redPale:C.white;
+      if(ws['A'+fr3]) ws['A'+fr3].s=st(C.navy,fbg3,{sz:10,wrap:false});
+      if(ws['B'+fr3]) ws['B'+fr3].s=st(C.red,fbg3,{sz:9,halign:'center',wrap:false});
+    }
+    XLSX.utils.book_append_sheet(wb, ws, 'CATÁLOGOS');
   }
-
-  // Tester table headers
-  const thRow = 11;
-  ['A','B','C','D','E','F'].forEach(col=>{
-    const ref=col+(thRow+1); if(ws_dash[ref]) ws_dash[ref].s=hdr(C.white,C.blue);
-  });
-  for(let ri=thRow+1; ri<fRow-1; ri++){
-    const bg=(ri%2===0)?C.white:'F9FAFB';
-    const pct=parseFloat(String(aoa_dash[ri][5]||'0'));
-    const pfg = pct>=90?C.green:pct>=80?C.amber:C.red;
-    const pbg = pct>=90?C.greenLt:pct>=80?C.amberLt:C.redLt;
-    ['A','B','C','D','E','F'].forEach((col,ci)=>{
-      const ref=col+(ri+1); if(!ws_dash[ref]) return;
-      if(ci===5) ws_dash[ref].s=cell(pfg,pbg,true,10,'center',false);
-      else ws_dash[ref].s=cell('111827',bg,ci===0,9,ci===0?'left':'center',false);
-    });
-  }
-
-  // Falla table headers
-  ['A','B','C'].forEach(col=>{
-    const ref=col+(fRow+1); if(ws_dash[ref]) ws_dash[ref].s=hdr(C.white,C.red);
-  });
-  for(let ri=fRow+1; ri<aoa_dash.length; ri++){
-    const bg=(ri%2===0)?'FFF5F5':C.white;
-    if(ws_dash[`A${ri+1}`]) ws_dash[`A${ri+1}`].s=cell('111827',bg,false,9,'left',true);
-    if(ws_dash[`B${ri+1}`]) ws_dash[`B${ri+1}`].s=cell(C.red,C.redLt,true,10,'center',false);
-    if(ws_dash[`C${ri+1}`]) ws_dash[`C${ri+1}`].s=cell(C.amber,C.amberLt,true,9,'center',false);
-  }
-  XLSX.utils.book_append_sheet(wb, ws_dash, 'DASHBOARD');
-
-  // ════════════════════════════════════════
-  // HOJA: DEFECTOS (segmentado Detección vs Operador)
-  // ════════════════════════════════════════
-  // Count detection vs operator defects
-  const detCounter = {};
-  const opCounter = {};
-  let totalDet = 0, totalOp = 0;
-  records.forEach(r => {
-    (r.defectDetection||[]).forEach(d => { detCounter[d] = (detCounter[d]||0)+1; totalDet++; });
-    (r.defectOperator||[]).forEach(d => { opCounter[d] = (opCounter[d]||0)+1; totalOp++; });
-  });
-  const totalDefects = totalDet + totalOp || 1;
-
-  const aoa_def = [];
-  aoa_def.push(['TELAMON  |  ANÁLISIS DE DEFECTOS — DETECCIÓN vs OPERADOR','','','','']);
-  aoa_def.push([`Total defectos registrados: ${totalDet+totalOp}  |  Exportado: ${today}`,'','','','']);
-  aoa_def.push(['']);
-
-  // KPI comparison
-  aoa_def.push(['RESUMEN GENERAL','CANTIDAD','% DEL TOTAL','','']);
-  aoa_def.push(['⚙️ Defectos de Detección (Tester)', totalDet, (totalDet/totalDefects*100).toFixed(1)+'%','','']);
-  aoa_def.push(['👤 Defectos de Operador', totalOp, (totalOp/totalDefects*100).toFixed(1)+'%','','']);
-  aoa_def.push(['']);
-
-  // Detection breakdown
-  const defRowStart = aoa_def.length;
-  aoa_def.push(['⚙️ DEFECTOS DE DETECCIÓN (TESTER)','OCURRENCIAS','% DE DETECCIÓN','','']);
-  const detSorted = Object.entries(detCounter).sort((a,b)=>b[1]-a[1]);
-  if (detSorted.length === 0) aoa_def.push(['Sin defectos de detección registrados','—','—','','']);
-  detSorted.forEach(([d,c]) => {
-    aoa_def.push([d, c, (c/(totalDet||1)*100).toFixed(1)+'%','','']);
-  });
-  aoa_def.push(['']);
-
-  // Operator breakdown
-  const opRowStart = aoa_def.length;
-  aoa_def.push(['👤 DEFECTOS DE OPERADOR','OCURRENCIAS','% DE OPERADOR','','']);
-  const opSorted = Object.entries(opCounter).sort((a,b)=>b[1]-a[1]);
-  if (opSorted.length === 0) aoa_def.push(['Sin defectos de operador registrados','—','—','','']);
-  opSorted.forEach(([d,c]) => {
-    aoa_def.push([d, c, (c/(totalOp||1)*100).toFixed(1)+'%','','']);
-  });
-
-  const ws_def = XLSX.utils.aoa_to_sheet(aoa_def);
-  ws_def['!cols'] = [{wch:42},{wch:14},{wch:16},{wch:4},{wch:4}];
-  ws_def['!merges'] = [{s:{r:0,c:0},e:{r:0,c:4}},{s:{r:1,c:0},e:{r:1,c:4}}];
-  if(ws_def['A1']) ws_def['A1'].s = titleStyle();
-  if(ws_def['A2']) ws_def['A2'].s = { font:{name:'Arial',sz:9,italic:true,color:{rgb:C.gray}}, fill:{patternType:'solid',fgColor:{rgb:C.grayLt}}, alignment:{horizontal:'center'} };
-
-  // Summary header (row 3 = idx 3)
-  ['A4','B4','C4'].forEach(ref=>{ if(ws_def[ref]) ws_def[ref].s=hdr(C.white,C.hdr2); });
-  // Det summary row
-  if(ws_def['A5']) ws_def['A5'].s=cell('92400E','FEF3C7',true,10,'left',false);
-  if(ws_def['B5']) ws_def['B5'].s=cell('92400E','FEF3C7',true,11,'center',false);
-  if(ws_def['C5']) ws_def['C5'].s=cell('92400E','FEF3C7',true,10,'center',false);
-  if(ws_def['A6']) ws_def['A6'].s=cell('1E40AF','DBEAFE',true,10,'left',false);
-  if(ws_def['B6']) ws_def['B6'].s=cell('1E40AF','DBEAFE',true,11,'center',false);
-  if(ws_def['C6']) ws_def['C6'].s=cell('1E40AF','DBEAFE',true,10,'center',false);
-
-  // Detection section header
-  ['A','B','C'].forEach(col=>{ const ref=col+(defRowStart+1); if(ws_def[ref]) ws_def[ref].s=hdr(C.white,C.amber); });
-  for(let ri=defRowStart+1; ri<opRowStart-1; ri++){
-    const bg=(ri%2===0)?C.white:'FFFBEB';
-    if(ws_def[`A${ri+1}`]) ws_def[`A${ri+1}`].s=cell('111827',bg,false,9,'left',true);
-    if(ws_def[`B${ri+1}`]) ws_def[`B${ri+1}`].s=cell('92400E','FEF3C7',true,10,'center',false);
-    if(ws_def[`C${ri+1}`]) ws_def[`C${ri+1}`].s=cell('92400E',bg,false,9,'center',false);
-  }
-  // Operator section header
-  ['A','B','C'].forEach(col=>{ const ref=col+(opRowStart+1); if(ws_def[ref]) ws_def[ref].s=hdr(C.white,C.blue); });
-  for(let ri=opRowStart+1; ri<aoa_def.length; ri++){
-    const bg=(ri%2===0)?C.white:'EFF6FF';
-    if(ws_def[`A${ri+1}`]) ws_def[`A${ri+1}`].s=cell('111827',bg,false,9,'left',true);
-    if(ws_def[`B${ri+1}`]) ws_def[`B${ri+1}`].s=cell('1E40AF','DBEAFE',true,10,'center',false);
-    if(ws_def[`C${ri+1}`]) ws_def[`C${ri+1}`].s=cell('1E40AF',bg,false,9,'center',false);
-  }
-
-  XLSX.utils.book_append_sheet(wb, ws_def, 'DEFECTOS');
-
-  // ════════════════════════════════════════
-  // HOJA 4: COMPONENTES (catálogo completo)
-  // ════════════════════════════════════════
-  const COMPONENTS_DICT_XL = {
-    'Cinta (Tape) - Material': ['PVC','Tela / PET (Cloth)','Fleece / PE (Vellón)','Aluminio','Teflón (PTFE)','Mastic','Kapton','Fibra de Vidrio'],
-    'Cinta (Tape) - Aplicación': ['Espiral / Traslape (Half-lap)','Punteada (Spot Tape)','Continua (Corrida)','Longitudinal','Espaciada (Open gap)','Bandera (Flag)'],
-    'Tubo / Cubierta': ['Corrugado Abierto (Slit Loom)','Corrugado Cerrado','Manga Térmica (Heat Shrink)','Tubo PVC','Grommet (Pasamuros)'],
-    'Protección': ['Malla (Braided Sleeve)','Esponja (Foam)','Cinta Anti-Ruido (Anti-Rattle)'],
-    'Sujeción (Clips/Ties)': ['Clip (Fir Tree/Rosebud)','Clip Edge','Clip con Corbata','Corbata (Cable Tie)','Canaleta (Channel)'],
-    'Cable': ['Convencional (TXL/FLRY)','Par Trenzado','Blindado (Shielded)','Coaxial','Cable de Batería'],
-    'Conector': ['Sellado (Sealed)','No Sellado','Inline (Conector-Conector)','Dummy Plug (Tapón)'],
-    'Accesorios Conector': ['TPA','CPA','PLR','Backshell / Wire Dress','Cavity Plug (Sello ciego)'],
-    'Terminal': ['Pin (Macho)','Socket (Hembra)','Terminal de Ojillo (Tierra)','Espada','IDC'],
-    'Empalme (Splice)': ['Soldadura Ultrasónica','Crimp Splice','Solder Sleeve'],
-    'Componentes Especiales': ['Relay','Fusible','Diodo / Resistencia','Ferrita','Inflador (Airbag)','Sensor','Barcode / QR Code'],
-  };
-  const aoa_comp = [];
-  aoa_comp.push(['CATÁLOGO DE COMPONENTES — WIRE HARNESS','','']);
-  aoa_comp.push(['CATEGORÍA / COMPONENTE','SUBTIPOS REGISTRADOS','# SUBTIPOS']);
-  Object.entries(COMPONENTS_DICT_XL).forEach(([cat, subs],i)=>{
-    aoa_comp.push([cat, subs.join(' · '), subs.length]);
-  });
-  const ws_comp = XLSX.utils.aoa_to_sheet(aoa_comp);
-  ws_comp['!cols'] = [{wch:30},{wch:72},{wch:10}];
-  ws_comp['!merges'] = [{s:{r:0,c:0},e:{r:0,c:2}}];
-  if(ws_comp['A1']) ws_comp['A1'].s = titleStyle();
-  ['A2','B2','C2'].forEach(ref=>{ if(ws_comp[ref]) ws_comp[ref].s=hdr(C.white,C.blue); });
-  for(let i=0;i<Object.keys(COMPONENTS_DICT_XL).length;i++){
-    const bg=i%2===0?C.white:'EFF6FF';
-    if(ws_comp[`A${i+3}`]) ws_comp[`A${i+3}`].s=cell(C.dark,bg,true,10,'left',false);
-    if(ws_comp[`B${i+3}`]) ws_comp[`B${i+3}`].s=cell(C.gray,bg,false,9,'left',true);
-    if(ws_comp[`C${i+3}`]) ws_comp[`C${i+3}`].s=cell(C.blue,C.blueLt,true,10,'center',false);
-  }
-  XLSX.utils.book_append_sheet(wb, ws_comp, 'COMPONENTES');
-
-  // ════════════════════════════════════════
-  // HOJA 5: PRUEBAS (catálogo completo)
-  // ════════════════════════════════════════
-  const TESTS_XL = [
-    ['Continuidad Eléctrica','Eléctrica','Verifica la conductividad de todos los circuitos del arnés'],
-    ['Cortocircuito / Aislamiento','Eléctrica','Detecta cortocircuitos entre circuitos y fallas de aislamiento'],
-    ['Caída de Tensión','Eléctrica','Mide la resistencia de empalmes y terminales bajo corriente'],
-    ['Hipot (Dieléctrico/Alta Tensión)','Eléctrica','Prueba de rigidez dieléctrica a alta tensión'],
-    ['Push-Pull (Extracción)','Mecánica','Fuerza de extracción de terminal en conector (retención)'],
-    ['Push-Out Force (Empuje Terminal)','Mecánica','Fuerza de empuje axial de terminal en cavidad'],
-    ['Prueba de Fuga (Leak Test)','Sellado','Verifica integridad de sellado en conectores contra humedad'],
-    ['Verificación Dimensional / Ruteo','Dimensional','Comprobación de longitudes, ruteo y tolerancias de montaje'],
-    ['Detección de Candados (TPA/CPA)','Visual/Sensor','Presencia y posición correcta de TPA/CPA/PLR'],
-    ['Detección de Clips / Sujeción','Visual/Sensor','Presencia y orientación correcta de clips y corbatas'],
-    ['Verificación de Color (Visión)','Visual/Sensor','Sistema de visión para verificación de color de cables/conectores'],
-    ['Presencia de Cinta / Spot Tape','Visual/Sensor','Detección de encintado requerido en posiciones críticas'],
-    ['Alineación de Terminal','Dimensional','Verificación de posición y alineación de terminales en cavidad'],
-    ['Escaneo Barcode','Trazabilidad','Lectura y validación de código de barras / QR del arnés'],
-    ['Poka-Yoke','Error Proofing','Prevención de errores por diseño de fixture y sistema'],
-  ];
-  const TYPE_COLORS = {
-    'Eléctrica': {fg:C.blue,bg:C.blueLt}, 'Mecánica': {fg:C.green,bg:C.greenLt},
-    'Sellado': {fg:C.amber,bg:C.amberLt}, 'Dimensional': {fg:'7C3AED',bg:'EDE9FE'},
-    'Visual/Sensor': {fg:'0891B2',bg:'E0F2FE'}, 'Trazabilidad': {fg:C.gray,bg:C.grayLt},
-    'Error Proofing': {fg:C.red,bg:C.redLt}
-  };
-  const aoa_tests = [];
-  aoa_tests.push(['CATÁLOGO DE PRUEBAS ELÉCTRICAS Y MECÁNICAS','','','']);
-  aoa_tests.push(['#','PRUEBA','TIPO','DESCRIPCIÓN']);
-  TESTS_XL.forEach(([name,type,desc],i)=>{ aoa_tests.push([i+1,name,type,desc]); });
-  const ws_tests = XLSX.utils.aoa_to_sheet(aoa_tests);
-  ws_tests['!cols'] = [{wch:5},{wch:35},{wch:16},{wch:55}];
-  ws_tests['!merges'] = [{s:{r:0,c:0},e:{r:0,c:3}}];
-  if(ws_tests['A1']) ws_tests['A1'].s = titleStyle();
-  ['A2','B2','C2','D2'].forEach(ref=>{ if(ws_tests[ref]) ws_tests[ref].s=hdr(C.white,C.blue); });
-  TESTS_XL.forEach(([name,type,desc],i)=>{
-    const r=i+3; const bg=i%2===0?C.white:'F9FAFB';
-    const tc=TYPE_COLORS[type]||{fg:C.gray,bg:C.grayLt};
-    if(ws_tests[`A${r}`]) ws_tests[`A${r}`].s=cell(C.white,C.blue,true,9,'center',false);
-    if(ws_tests[`B${r}`]) ws_tests[`B${r}`].s=cell(C.dark,bg,true,10,'left',false);
-    if(ws_tests[`C${r}`]) ws_tests[`C${r}`].s=cell(tc.fg,tc.bg,true,9,'center',false);
-    if(ws_tests[`D${r}`]) ws_tests[`D${r}`].s=cell(C.gray,bg,false,9,'left',true);
-  });
-  XLSX.utils.book_append_sheet(wb, ws_tests, 'PRUEBAS');
-
-  // ════════════════════════════════════════
-  // HOJA 6: FALLAS (catálogo + frecuencia real)
-  // ════════════════════════════════════════
-  const FAILURES_FULL = [
-    ['Terminal no insertada (Push-back)','Ensamble de Terminal'],
-    ['Cables invertidos (Miswire)','Error de Ruteo'],
-    ['Circuito abierto / Sin continuidad','Eléctrica'],
-    ['Cortocircuito','Eléctrica'],
-    ['Falta de componente (Clip, Sello, TPA)','Componente Faltante'],
-    ['Daño en aislamiento / Cobre expuesto','Daño Físico'],
-    ['Conector dañado / Roto','Daño Físico'],
-    ['Ruteo incorrecto / Longitud','Error de Ruteo'],
-    ['Encintado defectuoso / Faltante','Encintado'],
-    ['Terminal dañada / Deformada','Daño Físico'],
-  ];
-  const totalFails = Object.values(failFreq).reduce((a,b)=>a+b,0)||1;
-  const aoa_fallas = [];
-  aoa_fallas.push(['CATÁLOGO Y ANÁLISIS DE FALLAS — WIRE HARNESS','','','','']);
-  aoa_fallas.push(['#','TIPO DE FALLA','CATEGORÍA','OCURRENCIAS','% DEL TOTAL']);
-  FAILURES_FULL.forEach(([name,cat],i)=>{
-    const cnt = Object.entries(failFreq).find(([k])=>k.toLowerCase().includes(name.toLowerCase().split(' ')[0]))?.[1] || 0;
-    const pct = cnt>0 ? (cnt/totalFails*100).toFixed(1)+'%' : '0.0%';
-    aoa_fallas.push([i+1, name, cat, cnt||0, cnt>0?pct:'—']);
-  });
-  // Add any extra failures from real data not in catalog
-  Object.entries(failFreq).forEach(([f,c])=>{
-    const inCatalog = FAILURES_FULL.some(([name])=>f.toLowerCase().includes(name.toLowerCase().split(' ')[0]));
-    if(!inCatalog) aoa_fallas.push(['*', f, 'Otro', c, (c/totalFails*100).toFixed(1)+'%']);
-  });
-
-  const ws_fallas = XLSX.utils.aoa_to_sheet(aoa_fallas);
-  ws_fallas['!cols'] = [{wch:5},{wch:40},{wch:22},{wch:14},{wch:12}];
-  ws_fallas['!merges'] = [{s:{r:0,c:0},e:{r:0,c:4}}];
-  if(ws_fallas['A1']) ws_fallas['A1'].s = titleStyle();
-  ['A2','B2','C2','D2','E2'].forEach(ref=>{ if(ws_fallas[ref]) ws_fallas[ref].s=hdr(C.white,C.red); });
-  for(let i=0;i<aoa_fallas.length-2;i++){
-    const r=i+3; const bg=i%2===0?C.white:'FFF5F5';
-    const cnt=aoa_fallas[r-1]?.[3]||0;
-    if(ws_fallas[`A${r}`]) ws_fallas[`A${r}`].s=cell(C.white,C.red,true,9,'center',false);
-    if(ws_fallas[`B${r}`]) ws_fallas[`B${r}`].s=cell(C.dark,bg,cnt>0,10,'left',false);
-    if(ws_fallas[`C${r}`]) ws_fallas[`C${r}`].s=cell(C.gray,bg,false,9,'center',false);
-    if(ws_fallas[`D${r}`]) ws_fallas[`D${r}`].s=cell(cnt>0?C.red:C.gray, cnt>0?C.redLt:bg, true,10,'center',false);
-    if(ws_fallas[`E${r}`]) ws_fallas[`E${r}`].s=cell(C.amber,bg,false,9,'center',false);
-  }
-  XLSX.utils.book_append_sheet(wb, ws_fallas, 'FALLAS');
 
   // ── WRITE FILE ──
-  XLSX.writeFile(wb, `Telamon_Registro_${todayISO}.xlsx`);
-  showToast(`✓ Excel exportado — ${records.length} registros, 6 hojas`);
+  XLSX.writeFile(wb, 'Telamon_Registro_'+todayISO+'.xlsx');
+  showToast('✓ Excel exportado — '+records.length+' registros, 6 hojas (CHECKLIST incluido)');
 }
 
 // ── IMPORTAR ──
