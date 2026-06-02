@@ -2356,10 +2356,12 @@ function exportExcel() {
     const failSorted = Object.entries(failFreq).sort(function(a,b){return b[1]-a[1];});
     const tStats = {};
     records.forEach(function(r){
-      var t=r.tester||'?'; if(!tStats[t]) tStats[t]={total:0,ok:0,fail:0,solved:0};
+      var t=r.tester||'?'; if(!tStats[t]) tStats[t]={total:0,ok:0,fail:0,solved:0,cells:new Set(),clients:new Set()};
       tStats[t].total++;
       var s=getStatus(r);
       if(s==='OK') tStats[t].ok++; else if(s==='CON FALLA') tStats[t].fail++; else tStats[t].solved++;
+      if(r.cell) tStats[t].cells.add(String(r.cell));
+      if(r.client) tStats[t].clients.add(r.client.trim());
     });
 
     const aoa=[];
@@ -2374,11 +2376,13 @@ function exportExcel() {
     aoa.push(['Solucionados',          solvedCnt,'','Testers Activos',testers.length,'']);
     aoa.push(['First Pass Yield',      fpy,'','','','']);
     aoa.push(['']);
-    aoa.push(['TESTER','TOTAL','OK','CON FALLA','SOLUCIONADO','% OK']);
+    aoa.push(['TESTER','TOTAL','OK','CON FALLA','SOLUCIONADO','% OK','CELLS','CLIENTES']);
     const tStatStart = aoa.length;
     Object.entries(tStats).sort(function(a,b){return b[1].total-a[1].total;}).forEach(function(e){
       var t=e[0], s=e[1]; var pct=s.total>0?(s.ok/s.total*100).toFixed(1)+'%':'—';
-      aoa.push([t,s.total,s.ok,s.fail,s.solved,pct]);
+      var cellsList=[...s.cells].sort(function(a,b){return Number(a)-Number(b);}).join(', ');
+      var clientsList=[...s.clients].sort().join(', ');
+      aoa.push([t,s.total,s.ok,s.fail,s.solved,pct,cellsList,clientsList]);
     });
     aoa.push(['']);
     const failHdrRow = aoa.length;
@@ -2390,8 +2394,8 @@ function exportExcel() {
     if(!failSorted.length) aoa.push(['Sin fallas registradas','—','—','','','']);
 
     const ws=XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols']=[{wch:30},{wch:14},{wch:4},{wch:28},{wch:12},{wch:10}];
-    ws['!merges']=[mergeRow(0,0,5),mergeRow(1,0,5)];
+    ws['!cols']=[{wch:30},{wch:10},{wch:8},{wch:14},{wch:14},{wch:8},{wch:32},{wch:30}];
+    ws['!merges']=[mergeRow(0,0,7),mergeRow(1,0,7)];
     if(ws['A1']) ws['A1'].s=stTitle();
     if(ws['A2']) ws['A2'].s=stSub();
 
@@ -2408,15 +2412,16 @@ function exportExcel() {
       }
     }
     // Tester table header (row index 11)
-    ['A','B','C','D','E','F'].forEach(function(c){var ref=c+'12';if(ws[ref])ws[ref].s=stHdr(C.blue);});
+    ['A','B','C','D','E','F','G','H'].forEach(function(c){var ref=c+'12';if(ws[ref])ws[ref].s=stHdr(C.blue);});
     for(var ti2=tStatStart;ti2<failHdrRow-1;ti2++){
       var tr=ti2+1; var tbg=ti2%2===0?C.grayPale:C.white;
       var tpct=parseFloat(String(aoa[ti2][5]||'0'));
       var tfg=tpct>=90?C.green:tpct>=80?C.amber:C.red;
       var tpbg=tpct>=90?C.greenLt:tpct>=80?C.amberLt:C.redLt;
-      ['A','B','C','D','E','F'].forEach(function(c,ci){
+      ['A','B','C','D','E','F','G','H'].forEach(function(c,ci){
         var ref=c+tr; if(!ws[ref]) return;
         if(ci===5) ws[ref].s=stCtr(tfg,tpbg);
+        else if(ci>=6) ws[ref].s=st('111827',tbg,{sz:9,wrap:true,halign:'left'});
         else ws[ref].s=st(ci===0?C.navy:'111827',tbg,{sz:ci===0?10:9,bold:ci===0,halign:ci===0?'left':'center'});
       });
     }
