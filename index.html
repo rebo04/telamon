@@ -1996,8 +1996,8 @@ function exportRecords() {
 // ── EXPORTAR EXCEL (.XLSX) — ENGINEERING GRADE ──
 function exportExcel() {
   if (records.length === 0) { showToast('No hay registros para exportar', true); return; }
-  if (typeof XLSX === 'undefined') { showToast('Error cargando librería Excel', true); return; }
-
+  if (typeof XLSX === 'undefined') { showToast('Error: librería Excel no cargó. Verifica tu conexión e intenta de nuevo.', true); return; }
+  try {
   const wb = XLSX.utils.book_new();
   const today = new Date().toLocaleDateString('es-MX');
   const todayISO = new Date().toISOString().slice(0,10);
@@ -2568,8 +2568,23 @@ function exportExcel() {
   }
 
   // ── WRITE FILE ──
-  XLSX.writeFile(wb, 'Telamon_Registro_'+todayISO+'.xlsx');
-  showToast('✓ Excel exportado — '+records.length+' registros, 6 hojas (CHECKLIST incluido)');
+  try {
+    XLSX.writeFile(wb, 'Telamon_Registro_'+todayISO+'.xlsx');
+  } catch(writeErr) {
+    // Fallback: manual blob download
+    var wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+    var blob = new Blob([wbout], {type:'application/octet-stream'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'Telamon_Registro_'+todayISO+'.xlsx';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(url); document.body.removeChild(a); }, 500);
+  }
+  showToast('✓ Excel exportado — '+records.length+' registros, 6 hojas');
+  } catch(e) {
+    console.error('exportExcel error:', e);
+    showToast('Error al generar Excel: '+e.message, true);
+  }
 }
 
 // ── IMPORTAR ──
