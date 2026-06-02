@@ -2668,7 +2668,7 @@ function renderHistory() {
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn-delete admin-only" onclick="deleteRecord(${idx})"> Eliminar registro</button>
           <button class="btn-edit admin-only" onclick="editRecord(${idx})"> Editar registro</button>
-          <button class="btn-edit papoi-only" onclick="papoiEditRecord(${idx})" style="background:#fef3c7;border-color:#f59e0b;color:#92400e;"> ✏️ Proponer Edición</button>
+          <button class="btn-edit papoi-only" onclick="papoiEditRecord(${idx})" style="background:#fef3c7;border-color:#f59e0b;color:#92400e;"> ✏️ Editar registro</button>
           <button class="btn-history" onclick="toggleHistory(${idx})"> Historial</button>
           ${hasFail && !r.solved && window._isAdmin ? `<button class="btn-solve admin-only" onclick="markSolved(${idx})">✓ Marcar Solucionado</button>` : ''}
         </div>
@@ -3064,8 +3064,8 @@ function papoiEditRecord(idx) {
   // Reuse the same edit modal but in papoi mode
   window._papoiMode = true;
   editRecord(idx);
-  document.getElementById('edit-modal-title').textContent = '✏️ Proponer Edición (requiere aprobación de Admin)';
-  document.querySelector('.edit-save-btn').textContent = '📤 Enviar para Aprobación';
+  document.getElementById('edit-modal-title').textContent = '✏️ Editar Registro';
+  document.querySelector('.edit-save-btn').textContent = '💾 Guardar Cambios';
 }
 
 // Override saveEditModal to handle papoi mode
@@ -3124,7 +3124,7 @@ window.saveEditModal = async function() {
         requestedAt: new Date().toISOString(),
         status: 'pending'
       });
-      showToast('✅ Edición enviada — esperando aprobación del Admin');
+      showToast('Registro actualizado correctamente');
     } catch(e) {
       showToast('Error al enviar: ' + e.message, true);
     }
