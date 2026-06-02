@@ -2703,7 +2703,8 @@ function renderHistory() {
     }
 
     // Support both new (parts[]) and legacy (components/tests) format
-    const partsHtml = (r.parts || [{partnum: r.partnum, components: r.components, tests: r.tests, fail: r.fail, solution: r.solution}]).map(p => {
+    const _partsArr = r.parts || [{partnum: r.partnum, components: r.components, tests: r.tests, fail: r.fail, solution: r.solution}];
+    const partsHtml = _partsArr.map(p => {
       const compKeys = p.components ? Object.keys(p.components) : [];
       const compTags = compKeys.map(c => {
         const st = p.components && p.components[c];
@@ -2715,8 +2716,9 @@ function renderHistory() {
         return `<span class="comp-tag ${cls}">${c.split('/')[0].trim()}: ${lbl}</span>`;
       }).join('');
       const activTests = TESTS.filter(t => p.tests && p.tests[t]).join(', ') || '—';
-      const pFail = p.fail || '—';
-      const pSol = p.solution || '—';
+      // Fall back to record-level fail/solution when part-level is missing (older records)
+      const pFail = p.fail || (_partsArr.length === 1 ? r.fail : '') || '—';
+      const pSol = p.solution || (_partsArr.length === 1 ? r.solution : '') || '—';
       const pDet = (p.defectDetection && p.defectDetection.length>0) ? p.defectDetection.join(', ') : '';
       const pOp  = (p.defectOperator && p.defectOperator.length>0) ? p.defectOperator.join(', ') : '';
       return `
