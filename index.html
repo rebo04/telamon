@@ -2703,7 +2703,7 @@ function renderHistory() {
     }
 
     // Support both new (parts[]) and legacy (components/tests) format
-    const partsHtml = (r.parts || [{partnum: r.partnum, components: r.components, tests: r.tests}]).map(p => {
+    const partsHtml = (r.parts || [{partnum: r.partnum, components: r.components, tests: r.tests, fail: r.fail, solution: r.solution}]).map(p => {
       const compKeys = p.components ? Object.keys(p.components) : [];
       const compTags = compKeys.map(c => {
         const st = p.components && p.components[c];
@@ -2734,10 +2734,13 @@ function renderHistory() {
     return `
     <div class="record-card">
       <div class="record-head" onclick="toggleRecord(${idx})">
-        <div class="record-meta">
-          <span class="record-id">#${String(r.cell).padStart(3,'0')}</span>
-          <span class="record-part">${r.partnum}</span>
-          <span class="record-date">${dateStr} · ${r.tester}</span>
+        <div style="flex:1;min-width:0;">
+          <div class="record-meta">
+            <span class="record-id">#${String(r.cell).padStart(3,'0')}</span>
+            <span class="record-part">${r.partnum}</span>
+            <span class="record-date">${dateStr} · ${r.tester}</span>
+          </div>
+          ${hasFail ? `<div style="font-size:11px;color:var(--red);font-weight:600;margin-top:5px;">${r.fail}</div>` : ''}
         </div>
         ${statusPill}
       </div>
