@@ -2554,106 +2554,174 @@ function exportExcel() {
   }
 
   // ════════════════════════════════════════════════════════
-  // HOJA 6: PARETO  (Análisis 80/20)
+  // HOJA 6: PARETO  (Visual bar chart — cell fill simulation)
   // ════════════════════════════════════════════════════════
   {
-    const detCtrP={}, opCtrP={};
-    var totDetP=0, totOpP=0;
+    // ── Config ──────────────────────────────────────────
+    var BC=20;                       // bar columns
+    var C_NAME=0,C_RNK=1,C_BAR0=2;  // col indices
+    var C_BAR1=C_BAR0+BC-1;          // last bar col  = 21 (V)
+    var C_N=C_BAR1+1,C_PCT=C_N+1,C_ACUM=C_PCT+1; // 22,23,24 = W,X,Y
+    var C_THRESH=C_BAR0+Math.round(BC*0.8); // 80% position col = 18 (S)
+    var TCOLS=C_ACUM+1;              // 25 total cols
+    // Friendly pastel palette
+    var V_BAR='93C5FD',V_BAR2='BFDBFE';  // sky-400/200 vital few
+    var T_BAR='BAE6FD',T_BAR2='E0F2FE';  // sky-200/100 trivial many
+    var EMPTY='F1F5F9';              // slate-100 empty bar cell
+    var THRESH_C='FDE68A';           // amber-200 80% column
+    var ACUM_C='FED7AA',ACUM_T='C2410C'; // orange-200/700 cumulative
+
+    function pCL(i){if(i<26)return String.fromCharCode(65+i);
+      return String.fromCharCode(64+Math.floor(i/26))+String.fromCharCode(65+i%26);}
+    function pEmptyRow(){return new Array(TCOLS).fill('');}
+
+    // ── Data ────────────────────────────────────────────
+    var detCtrP={},opCtrP={},totDetP=0,totOpP=0;
     records.forEach(function(r){
       (r.defectDetection||[]).forEach(function(d){detCtrP[d]=(detCtrP[d]||0)+1;totDetP++;});
       (r.defectOperator ||[]).forEach(function(d){opCtrP[d] =(opCtrP[d] ||0)+1;totOpP++;});
     });
-    function mkPareto(ctr,tot){
-      if(!tot||!Object.keys(ctr).length) return [];
+    function mkP(ctr,tot){
+      if(!tot||!Object.keys(ctr).length)return[];
       var s=Object.entries(ctr).sort(function(a,b){return b[1]-a[1];}),mx=s[0][1],cum=0;
-      return s.map(function(e,i){cum+=e[1];var cp=cum/tot*100;
+      return s.slice(0,12).map(function(e,i){cum+=e[1];var cp=cum/tot*100;
         return{rank:i+1,name:e[0],n:e[1],pct:(e[1]/tot*100).toFixed(1)+'%',
-          bar:'█'.repeat(Math.max(1,Math.round(e[1]/mx*24))),
-          cumul:cp.toFixed(1)+'%',vital:cp<=80.01};});
+          fill:Math.max(1,Math.round(e[1]/mx*BC)),
+          acumPct:cp,cumul:cp.toFixed(1)+'%',vital:cp<=80.01};});
     }
-    var dP=mkPareto(detCtrP,totDetP), oP=mkPareto(opCtrP,totOpP);
+    var dP=mkP(detCtrP,totDetP),oP=mkP(opCtrP,totOpP);
     function nVit(a){return a.filter(function(r){return r.vital;}).length;}
 
+    // ── Build aoa ───────────────────────────────────────
     const aoa=[];
-    aoa.push(['TELAMON  ·  ANÁLISIS PARETO  |  TOP DEFECTOS DE CALIDAD  —  WIRE HARNESS','','','','','']);
-    aoa.push([today+'  ·  Principio 80/20: los pocos defectos que generan el mayor impacto  ·  Made by: Arturo Rebolledo Avelino','','','','','']);
-    aoa.push(['']);
-    aoa.push(['RESUMEN EJECUTIVO  —  PRINCIPIO 80/20','','','','','']);
-    aoa.push(['Defectos de Detección (Tester)',totDetP,'',nVit(dP)+' de '+(dP.length||0)+' tipos generan el 80% de los defectos','','']);
-    aoa.push(['Defectos de Operador',          totOpP, '',nVit(oP)+' de '+(oP.length||0)+' tipos generan el 80% de los defectos','','']);
-    aoa.push(['']);
+    var r0=pEmptyRow(); r0[0]='TELAMON  ·  ANÁLISIS PARETO  |  TOP DEFECTOS — WIRE HARNESS'; aoa.push(r0);
+    var r1=pEmptyRow(); r1[0]=today+'  ·  Principio 80/20: los pocos defectos que generan el mayor impacto  ·  Made by: Arturo Rebolledo Avelino'; aoa.push(r1);
+    aoa.push(pEmptyRow());
+    var rSum=pEmptyRow(); rSum[0]='RESUMEN EJECUTIVO — PRINCIPIO 80/20'; aoa.push(rSum);
+    var rS1=pEmptyRow(); rS1[0]='Defectos Tester';  rS1[1]=totDetP; rS1[2]=nVit(dP)+' de '+(dP.length||0)+' tipos causan el 80%'; aoa.push(rS1);
+    var rS2=pEmptyRow(); rS2[0]='Defectos Operador';rS2[1]=totOpP;  rS2[2]=nVit(oP)+' de '+(oP.length||0)+' tipos causan el 80%'; aoa.push(rS2);
+    aoa.push(pEmptyRow());
 
-    // ── TESTER PARETO ──
-    var dHdr=aoa.length;
-    aoa.push(['#','DEFECTO DE DETECCIÓN  —  TESTER','N','%','█  BARRA PARETO  (proporción al máximo)','ACUM %']);
-    if(!dP.length) aoa.push(['—','Sin defectos registrados',0,'—','','—']);
-    var dRows=[],dThresh=-1;
-    dP.forEach(function(row,i){
-      if(i>0&&!row.vital&&dP[i-1].vital){dThresh=aoa.length;
-        aoa.push(['','◀  VITAL FEW  ──────────────────────────  80%  ──────────────────────────  TRIVIAL MANY  ▶','','','','']);}
-      dRows.push({idx:aoa.length,vital:row.vital});
-      aoa.push([row.rank,row.name,row.n,row.pct,row.bar,row.cumul]);
-    });
-    aoa.push(['']);
+    // Track style info per data row
+    var styleRows=[];
 
-    // ── OPERATOR PARETO ──
-    var oHdr=aoa.length;
-    aoa.push(['#','DEFECTO DE OPERADOR','N','%','█  BARRA PARETO  (proporción al máximo)','ACUM %']);
-    if(!oP.length) aoa.push(['—','Sin defectos registrados',0,'—','','—']);
-    var oRows=[],oThresh=-1;
-    oP.forEach(function(row,i){
-      if(i>0&&!row.vital&&oP[i-1].vital){oThresh=aoa.length;
-        aoa.push(['','◀  VITAL FEW  ──────────────────────────  80%  ──────────────────────────  TRIVIAL MANY  ▶','','','','']);}
-      oRows.push({idx:aoa.length,vital:row.vital});
-      aoa.push([row.rank,row.name,row.n,row.pct,row.bar,row.cumul]);
-    });
-    aoa.push(['']);
-    var legRow=aoa.length;
-    aoa.push(['LEYENDA:   Rojo = VITAL FEW (≤80% acumulado) — requiere acción inmediata     Gris = TRIVIAL MANY (>80%) — monitorear','','','','','']);
+    function addSection(pareto,title){
+      // header
+      var hdrIdx=aoa.length;
+      var hRow=pEmptyRow();
+      hRow[C_NAME]=title; hRow[C_RNK]='#';
+      hRow[C_BAR0]='◀  BARRA  (proporcional al máximo —  col S = umbral 80%)';
+      hRow[C_N]='N'; hRow[C_PCT]='% TOT'; hRow[C_ACUM]='ACUM %';
+      aoa.push(hRow);
+      styleRows.push({idx:hdrIdx,type:'hdr'});
 
+      if(!pareto.length){
+        var eRow=pEmptyRow(); eRow[C_NAME]='Sin defectos registrados'; aoa.push(eRow); return;
+      }
+
+      var prevVital=true;
+      pareto.forEach(function(row,i){
+        // separator at 80% boundary
+        if(i>0 && !row.vital && prevVital){
+          var sepIdx=aoa.length;
+          var sep=pEmptyRow();
+          sep[C_NAME]='◄  VITAL FEW — acción inmediata   ·  80% ACUMULADO ·   TRIVIAL MANY — monitorear  ►';
+          aoa.push(sep);
+          styleRows.push({idx:sepIdx,type:'sep'});
+        }
+        prevVital=row.vital;
+        var dRowIdx=aoa.length;
+        var dRow=pEmptyRow();
+        dRow[C_NAME]=row.name; dRow[C_RNK]=row.rank;
+        dRow[C_N]=row.n; dRow[C_PCT]=row.pct; dRow[C_ACUM]=row.cumul;
+        aoa.push(dRow);
+        styleRows.push({idx:dRowIdx,type:'data',fill:row.fill,vital:row.vital,acumPct:row.acumPct,altRow:i%2});
+      });
+      aoa.push(pEmptyRow());
+    }
+
+    addSection(dP,'DEFECTO DE DETECCIÓN  —  TESTER');
+    addSection(oP,'DEFECTO DE OPERADOR');
+
+    var legIdx=aoa.length;
+    var legR=pEmptyRow();
+    legR[0]='LEYENDA:   Azul = VITAL FEW (≤80% acum — acción inmediata)   Celeste = TRIVIAL MANY (>80%)   Ámbar (col S) = umbral 80%   Naranja = % acumulado';
+    aoa.push(legR);
+
+    // ── Sheet & cols ────────────────────────────────────
     const ws=XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols']=[{wch:5},{wch:46},{wch:8},{wch:8},{wch:30},{wch:10}];
-    ws['!merges']=[mergeRow(0,0,5),mergeRow(1,0,5),mergeRow(3,0,5),
-      mergeRow(dThresh,0,5),mergeRow(oThresh,0,5),mergeRow(legRow,0,5)
-    ].filter(function(m){return m.s.r>=0;});
+    var cols=[{wch:38},{wch:4}];
+    for(var bci=0;bci<BC;bci++) cols.push({wch:2.2});
+    cols.push({wch:7},{wch:8},{wch:9});
+    ws['!cols']=cols;
 
+    // ── Merges ──────────────────────────────────────────
+    var merges=[mergeRow(0,0,TCOLS-1),mergeRow(1,0,TCOLS-1),mergeRow(3,0,TCOLS-1),
+                mergeRow(legIdx,0,TCOLS-1),
+                {s:{r:4,c:2},e:{r:4,c:TCOLS-1}},{s:{r:5,c:2},e:{r:5,c:TCOLS-1}}];
+    styleRows.forEach(function(sm){
+      if(sm.type==='hdr')  merges.push({s:{r:sm.idx,c:C_BAR0},e:{r:sm.idx,c:C_BAR1}});
+      if(sm.type==='sep')  merges.push({s:{r:sm.idx,c:0},e:{r:sm.idx,c:TCOLS-1}});
+    });
+    ws['!merges']=merges;
+
+    // ── Base styles ─────────────────────────────────────
     if(ws['A1']) ws['A1'].s=stTitle();
     if(ws['A2']) ws['A2'].s=stSub();
     if(ws['A4']) ws['A4'].s=stSecHdr();
+    if(ws['A5']){ws['A5'].s=st('92400E',C.amberLt,{bold:true,sz:10});}
+    if(ws['B5']){ws['B5'].s=stCtr('92400E',C.amberLt);}
+    if(ws['C5']){ws['C5'].s=st(C.gray,C.amberLt,{sz:9,italic:true,wrap:false});}
+    if(ws['A6']){ws['A6'].s=st('1E40AF',C.blueLt,{bold:true,sz:10});}
+    if(ws['B6']){ws['B6'].s=stCtr('1E40AF',C.blueLt);}
+    if(ws['C6']){ws['C6'].s=st(C.gray,C.blueLt,{sz:9,italic:true,wrap:false});}
+    if(ws['A'+(legIdx+1)]) ws['A'+(legIdx+1)].s=st(C.gray,'F8FAFC',{sz:9,italic:true,wrap:false});
 
-    // Summary rows
-    if(ws['A5']) ws['A5'].s=st('92400E',C.amberLt,{bold:true,sz:10});
-    if(ws['B5']) ws['B5'].s=stCtr('92400E',C.amberLt);
-    if(ws['D5']) ws['D5'].s=st(C.gray,C.amberLt,{sz:9,italic:true,wrap:false});
-    if(ws['A6']) ws['A6'].s=st('1E40AF',C.blueLt,{bold:true,sz:10});
-    if(ws['B6']) ws['B6'].s=stCtr('1E40AF',C.blueLt);
-    if(ws['D6']) ws['D6'].s=st(C.gray,C.blueLt,{sz:9,italic:true,wrap:false});
-
-    // Style a pareto section
-    function styleParetoHdr(hdrIdx, color){
-      ['A','B','C','D','E','F'].forEach(function(c){var ref=c+(hdrIdx+1);if(ws[ref])ws[ref].s=stHdr(color);});
-    }
-    function styleParetoRows(rows, threshIdx){
-      if(threshIdx>=0){
-        var tr=threshIdx+1;
-        ['A','B','C','D','E','F'].forEach(function(c){
-          var ref=c+tr; if(ws[ref]) ws[ref].s=st(C.amber,C.amberLt,{bold:true,sz:9,italic:true,halign:'center'});
+    // ── Per-row styles ───────────────────────────────────
+    // Track which header color to use (alternating teal/blue per section)
+    var secColors=[C.blue,C.teal]; var secIdx=0;
+    styleRows.forEach(function(sm){
+      var er=sm.idx+1;
+      if(sm.type==='hdr'){
+        var hc=secColors[secIdx%2]; secIdx++;
+        [pCL(C_NAME),pCL(C_RNK),pCL(C_BAR0),pCL(C_N),pCL(C_PCT),pCL(C_ACUM)].forEach(function(c){
+          var ref=c+er; if(ws[ref]) ws[ref].s=stHdr(hc);
         });
+      } else if(sm.type==='sep'){
+        for(var ci2=0;ci2<TCOLS;ci2++){var ref2=pCL(ci2)+er;if(!ws[ref2])ws[ref2]={v:'',t:'s'};ws[ref2].s=st(C.amber,'FEF3C7',{bold:true,sz:9,italic:true,halign:'center'});}
+      } else if(sm.type==='data'){
+        var v=sm.vital; var alt=sm.altRow;
+        var rowBg=v?(alt?'EFF6FF':'DBEAFE'):(alt?'F0F9FF':'E0F2FE'); // blue-50/100 vs sky-50/100
+        // Name
+        if(ws[pCL(C_NAME)+er]) ws[pCL(C_NAME)+er].s=st(v?'1E3A8A':'334155',rowBg,{sz:10,bold:v,wrap:false});
+        // Rank
+        if(ws[pCL(C_RNK)+er]) ws[pCL(C_RNK)+er].s=stCtr(v?'1E40AF':'475569',rowBg,{bold:v,sz:9});
+        // Bar cells
+        for(var bc2=C_BAR0;bc2<=C_BAR1;bc2++){
+          var cref=pCL(bc2)+er;
+          if(!ws[cref]) ws[cref]={v:'',t:'s'};
+          var isFill=bc2<C_BAR0+sm.fill;
+          var isThr=bc2===C_THRESH;
+          if(isFill){
+            ws[cref].s=st(v?V_BAR:T_BAR,v?V_BAR:T_BAR,{});
+          } else if(isThr){
+            ws[cref].s=st(THRESH_C,THRESH_C,{});
+          } else {
+            ws[cref].s=st(EMPTY,EMPTY,{});
+          }
+        }
+        // Cumulative dot: mark the cell at cumulative % position
+        var cumulCol=C_BAR0+Math.min(BC-1,Math.round(sm.acumPct/100*BC));
+        var cref2=pCL(cumulCol)+er;
+        if(!ws[cref2]) ws[cref2]={v:'▲',t:'s'};
+        else ws[cref2].v='▲';
+        ws[cref2].s=st(ACUM_T,ACUM_C,{bold:true,halign:'center',sz:8});
+        // N, %, ACUM%
+        if(ws[pCL(C_N)+er])   ws[pCL(C_N)+er].s=stCtr(v?'1E40AF':'475569',rowBg,{bold:v});
+        if(ws[pCL(C_PCT)+er]) ws[pCL(C_PCT)+er].s=stCtr(v?'1E40AF':'475569',rowBg);
+        if(ws[pCL(C_ACUM)+er])ws[pCL(C_ACUM)+er].s=stCtr(ACUM_T,ACUM_C,{bold:true,sz:10});
       }
-      rows.forEach(function(info,i){
-        var er=info.idx+1; var v=info.vital;
-        var bg=v?(i%2===0?C.redLt:'FFF1F2'):(i%2===0?C.grayPale:C.white);
-        if(ws['A'+er]) ws['A'+er].s=stCtr(v?C.red:C.gray,bg,{bold:true,sz:9});
-        if(ws['B'+er]) ws['B'+er].s=st(v?'111827':C.gray,bg,{sz:10,bold:v,wrap:false});
-        if(ws['C'+er]) ws['C'+er].s=stCtr(v?C.red:C.gray,bg,{bold:v});
-        if(ws['D'+er]) ws['D'+er].s=stCtr(v?C.red:C.gray,bg);
-        if(ws['E'+er]) ws['E'+er].s=st(v?C.red:C.gray,v?'FEE2E2':'F3F4F6',{sz:10,halign:'left',wrap:false,bold:v});
-        if(ws['F'+er]) ws['F'+er].s=stCtr(v?C.red:C.gray,v?C.redLt:C.grayLt,{bold:v,sz:10});
-      });
-    }
-    styleParetoHdr(dHdr,C.amber);  styleParetoRows(dRows,dThresh);
-    styleParetoHdr(oHdr,C.blue);   styleParetoRows(oRows,oThresh);
-    if(ws['A'+(legRow+1)]) ws['A'+(legRow+1)].s=st(C.gray,C.grayPale,{sz:9,italic:true,wrap:false});
+    });
     XLSX.utils.book_append_sheet(wb, ws, 'PARETO');
   }
 
