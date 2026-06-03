@@ -512,7 +512,36 @@ body {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 10px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+}
+.search-bar-wrap {
+  position: relative; margin-bottom: 16px;
+}
+.search-bar-wrap svg {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  width: 16px; height: 16px; stroke: var(--muted); fill: none;
+  stroke-width: 2; stroke-linecap: round; pointer-events: none;
+}
+#history-search {
+  width: 100%; padding: 10px 14px 10px 36px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-size: 14px; font-family: var(--font); background: var(--surface);
+  color: var(--text-dark); outline: none; box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+#history-search:focus { border-color: var(--accent2); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+.charts-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;
+}
+@media(max-width:600px){ .charts-row { grid-template-columns: 1fr; } }
+.chart-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.chart-card-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.7px; color: var(--muted); margin-bottom: 12px;
 }
 .stat-box {
   background: var(--surface);
@@ -1212,6 +1241,8 @@ body.role-papoi .papoi-only { display: inline-flex !important; }
 
 <!-- xlsx-js-style: SheetJS con soporte completo de estilos de celda -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 </head>
 <body>
@@ -1354,6 +1385,20 @@ body.role-papoi .papoi-only { display: inline-flex !important; }
     </button>
   </div>
   <div class="stats-bar" id="stats-bar"></div>
+  <div class="charts-row" id="charts-row" style="display:none;">
+    <div class="chart-card">
+      <div class="chart-card-title">Resultados de Inspección</div>
+      <canvas id="chart-status" height="180"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">Defectos — Tester vs Operador</div>
+      <canvas id="chart-defects" height="180"></canvas>
+    </div>
+  </div>
+  <div class="search-bar-wrap">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="history-search" placeholder="Buscar por Part Number o Cell…" oninput="filterHistory(this.value)">
+  </div>
   <div id="history-list"></div>
 </div>
 
@@ -1524,6 +1569,8 @@ const DEFECT_CATEGORIES = Object.keys(DEFECT_TYPES);
 // partBlocks: [{ partnum, compState:{}, testState:{} }, ...]
 let partBlocks = [];
 let records = [];
+let _chartStatus = null;
+let _chartDefects = null;
 let selectedFailures = {};
 let selectedDefects = {}; // { subDefect: true }
 
@@ -2792,6 +2839,61 @@ function renderHistory() {
       </div>
     </div>`;
   }).join('');
+
+  // ── CHARTS ──
+  if (typeof Chart !== 'undefined') {
+    const passCount   = records.filter(r => { const hf=r.fail&&r.fail.toLowerCase()!=='n/a'&&r.fail.trim()!==''; return !hf; }).length;
+    const failCount   = records.filter(r => { const hf=r.fail&&r.fail.toLowerCase()!=='n/a'&&r.fail.trim()!==''; return hf&&!r.solved; }).length;
+    const solvedCount = records.filter(r => { const hf=r.fail&&r.fail.toLowerCase()!=='n/a'&&r.fail.trim()!==''; return hf&&r.solved; }).length;
+    let totalTesterDef=0, totalOpDef=0;
+    records.forEach(r => {
+      (r.defectDetection||[]).forEach(() => totalTesterDef++);
+      (r.defectOperator ||[]).forEach(() => totalOpDef++);
+    });
+    document.getElementById('charts-row').style.display = 'grid';
+    if (_chartStatus)  _chartStatus.destroy();
+    if (_chartDefects) _chartDefects.destroy();
+    const font = { family: "'SF Pro Display','Segoe UI',sans-serif" };
+    _chartStatus = new Chart(document.getElementById('chart-status').getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: ['PASS','FAIL','SOLUCIONADO'],
+        datasets: [{ data:[passCount,failCount,solvedCount],
+          backgroundColor:['#10b981','#ef4444','#3b82f6'], borderWidth:0 }]
+      },
+      options: { responsive:true, cutout:'68%',
+        plugins:{ legend:{ position:'bottom', labels:{ font:{size:11,...font}, padding:14, usePointStyle:true } } } }
+    });
+    _chartDefects = new Chart(document.getElementById('chart-defects').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: ['Def. Tester','Def. Operador'],
+        datasets: [{ data:[totalTesterDef,totalOpDef],
+          backgroundColor:['#f59e0b','#6366f1'], borderRadius:6, borderWidth:0 }]
+      },
+      options: { responsive:true,
+        plugins:{ legend:{ display:false } },
+        scales:{
+          y:{ beginAtZero:true, ticks:{ font:{size:10,...font} }, grid:{ color:'rgba(0,0,0,0.05)' } },
+          x:{ ticks:{ font:{size:11,weight:'600',...font} }, grid:{ display:false } }
+        }
+      }
+    });
+  }
+}
+
+function filterHistory(query) {
+  const q = (query || '').toLowerCase().trim();
+  document.querySelectorAll('#history-list .record-card').forEach((card, i) => {
+    if (!q) { card.style.display = ''; return; }
+    const r = records[i];
+    const haystack = [
+      r.partnum || '',
+      String(r.cell || ''),
+      ...(r.parts || []).map(p => p.partnum || '')
+    ].join(' ').toLowerCase();
+    card.style.display = haystack.includes(q) ? '' : 'none';
+  });
 }
 
 function toggleRecord(idx) {
@@ -3057,11 +3159,13 @@ function saveEditModal() {
   record.defectDetection = _bd.detection;
   record.defectOperator = _bd.operator;
 
-  // Update components and tests in all part blocks
+  // Update components, tests, fail and solution in all part blocks
   if (record.parts && record.parts.length > 0) {
     record.parts.forEach(p => {
       p.components = JSON.parse(JSON.stringify(_emCompState));
-      p.tests = JSON.parse(JSON.stringify(_emTestState));
+      p.tests      = JSON.parse(JSON.stringify(_emTestState));
+      p.fail       = fail;
+      p.solution   = record.solution;
     });
   }
   record.components = JSON.parse(JSON.stringify(_emCompState));
