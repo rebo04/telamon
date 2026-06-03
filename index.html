@@ -1243,6 +1243,8 @@ body.role-papoi .papoi-only { display: inline-flex !important; }
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- JSZip for Excel chart injection -->
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 
 </head>
 <body>
@@ -2048,12 +2050,146 @@ function exportRecords() {
   showToast(`${records.length} registros exportados`);
 }
 
+// ── OOXML CHART HELPERS (injected via JSZip post-processing) ──
+function _escX(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function _makeChart(title, labels, values, barColor) {
+  var n = labels.length;
+  var cats = labels.map(function(l,i){ return '<c:pt idx="'+i+'"><c:v>'+_escX(l)+'</c:v></c:pt>'; }).join('');
+  var vals = values.map(function(v,i){ return '<c:pt idx="'+i+'"><c:v>'+v+'</c:v></c:pt>'; }).join('');
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+  '<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" ' +
+  'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ' +
+  'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+  '<c:lang val="es-MX"/><c:style val="2"/>' +
+  '<c:chart>' +
+  '<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/>' +
+  '<a:p><a:pPr><a:defRPr b="1" sz="1100"/></a:pPr>' +
+  '<a:r><a:rPr b="1" sz="1100"/><a:t>'+_escX(title)+'</a:t></a:r></a:p>' +
+  '</c:rich></c:tx><c:overlay val="0"/></c:title>' +
+  '<c:autoTitleDeleted val="0"/>' +
+  '<c:plotArea><c:layout/>' +
+  '<c:barChart>' +
+  '<c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>' +
+  '<c:ser>' +
+  '<c:idx val="0"/><c:order val="0"/>' +
+  '<c:spPr><a:solidFill><a:srgbClr val="'+barColor+'"/></a:solidFill>' +
+  '<a:ln w="9525"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:ln></c:spPr>' +
+  '<c:dLbls>' +
+  '<c:numFmt formatCode="General" sourceLinked="0"/><c:spPr/>' +
+  '<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="900" b="1"/></a:pPr></a:p></c:txPr>' +
+  '<c:showLegendKey val="0"/><c:showVal val="1"/><c:showCatName val="0"/>' +
+  '<c:showSerName val="0"/><c:showPercent val="0"/><c:showBubbleSize val="0"/>' +
+  '</c:dLbls>' +
+  '<c:cat><c:strLit><c:ptCount val="'+n+'"/>'+cats+'</c:strLit></c:cat>' +
+  '<c:val><c:numLit><c:formatCode>General</c:formatCode><c:ptCount val="'+n+'"/>'+vals+'</c:numLit></c:val>' +
+  '</c:ser>' +
+  '<c:axId val="1"/><c:axId val="2"/>' +
+  '</c:barChart>' +
+  '<c:catAx>' +
+  '<c:axId val="1"/><c:scaling><c:orientation val="minMax"/></c:scaling>' +
+  '<c:delete val="0"/><c:axPos val="b"/>' +
+  '<c:numFmt formatCode="General" sourceLinked="0"/><c:tickLblPos val="nextTo"/>' +
+  '<c:spPr><a:ln><a:solidFill><a:srgbClr val="CBD5E1"/></a:solidFill></a:ln></c:spPr>' +
+  '<c:txPr><a:bodyPr rot="-5400000"/><a:lstStyle/>' +
+  '<a:p><a:pPr><a:defRPr sz="800"/></a:pPr></a:p></c:txPr>' +
+  '<c:crossAx val="2"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/>' +
+  '</c:catAx>' +
+  '<c:valAx>' +
+  '<c:axId val="2"/><c:scaling><c:orientation val="minMax"/></c:scaling>' +
+  '<c:delete val="0"/><c:axPos val="l"/>' +
+  '<c:numFmt formatCode="General" sourceLinked="0"/><c:tickLblPos val="nextTo"/>' +
+  '<c:spPr><a:ln><a:solidFill><a:srgbClr val="CBD5E1"/></a:solidFill></a:ln></c:spPr>' +
+  '<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="800"/></a:pPr></a:p></c:txPr>' +
+  '<c:crossAx val="1"/><c:crossBetween val="between"/>' +
+  '</c:valAx>' +
+  '</c:plotArea>' +
+  '<c:plotVisOnly val="1"/>' +
+  '</c:chart>' +
+  '<c:spPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill>' +
+  '<a:ln w="9525"><a:solidFill><a:srgbClr val="E2E8F0"/></a:solidFill></a:ln></c:spPr>' +
+  '</c:chartSpace>';
+}
+function _makeDrawing() {
+  function anch(id, name, rId, fc, fr, tc, tr) {
+    return '<xdr:twoCellAnchor moveWithCells="1" sizeWithCells="1">' +
+    '<xdr:from><xdr:col>'+fc+'</xdr:col><xdr:colOff>0</xdr:colOff>' +
+    '<xdr:row>'+fr+'</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>' +
+    '<xdr:to><xdr:col>'+tc+'</xdr:col><xdr:colOff>0</xdr:colOff>' +
+    '<xdr:row>'+tr+'</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>' +
+    '<xdr:graphicFrame macro="">' +
+    '<xdr:nvGraphicFramePr>' +
+    '<xdr:cNvPr id="'+id+'" name="'+_escX(name)+'"/>' +
+    '<xdr:cNvGraphicFramePr><a:graphicFrameLocks noGrp="1"/></xdr:cNvGraphicFramePr>' +
+    '</xdr:nvGraphicFramePr>' +
+    '<xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm>' +
+    '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart">' +
+    '<c:chart r:id="'+rId+'"/>' +
+    '</a:graphicData></a:graphic>' +
+    '</xdr:graphicFrame><xdr:clientData/>' +
+    '</xdr:twoCellAnchor>';
+  }
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+  '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" ' +
+  'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ' +
+  'xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" ' +
+  'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+  anch(1,'Defectos Tester',   'rId1', 0,1, 10,18) +
+  anch(2,'Defectos Operador', 'rId2', 11,1, 21,18) +
+  anch(3,'Fallas Comunes',    'rId3', 0,20, 21,40) +
+  '</xdr:wsDr>';
+}
+async function _injectCharts(wb, chartData) {
+  var wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+  if (typeof JSZip === 'undefined') return wbout;
+  var zip = await JSZip.loadAsync(wbout);
+  var tD = chartData.tester.length   ? chartData.tester   : [{label:'Sin datos',value:0}];
+  var oD = chartData.operator.length ? chartData.operator : [{label:'Sin datos',value:0}];
+  var fD = chartData.fails.length    ? chartData.fails    : [{label:'Sin datos',value:0}];
+  zip.file('xl/charts/chart1.xml', _makeChart('Defectos — Detección (Tester)', tD.map(function(d){return d.label;}), tD.map(function(d){return d.value;}), '93C5FD'));
+  zip.file('xl/charts/chart2.xml', _makeChart('Defectos — Operador',           oD.map(function(d){return d.label;}), oD.map(function(d){return d.value;}), '86EFAC'));
+  zip.file('xl/charts/chart3.xml', _makeChart('Fallas más Comunes',            fD.map(function(d){return d.label;}), fD.map(function(d){return d.value;}), 'FCA5A5'));
+  zip.file('xl/drawings/drawing1.xml', _makeDrawing());
+  zip.file('xl/drawings/_rels/drawing1.xml.rels',
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart1.xml"/>' +
+    '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart2.xml"/>' +
+    '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart3.xml"/>' +
+    '</Relationships>');
+  zip.file('xl/worksheets/_rels/sheet6.xml.rels',
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>' +
+    '</Relationships>');
+  var sh6 = await zip.file('xl/worksheets/sheet6.xml').async('string');
+  if (!sh6.includes('<drawing')) {
+    if (!sh6.includes('xmlns:r='))
+      sh6 = sh6.replace(/(<worksheet\b[^>]*)(>)/, '$1 xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"$2');
+    sh6 = sh6.replace('</worksheet>', '<drawing r:id="rId1"/></worksheet>');
+    zip.file('xl/worksheets/sheet6.xml', sh6);
+  }
+  var ct = await zip.file('[Content_Types].xml').async('string');
+  if (!ct.includes('chart1.xml')) {
+    ct = ct.replace('</Types>',
+      '<Override PartName="/xl/charts/chart1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>' +
+      '<Override PartName="/xl/charts/chart2.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>' +
+      '<Override PartName="/xl/charts/chart3.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>' +
+      '<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>' +
+      '</Types>');
+    zip.file('[Content_Types].xml', ct);
+  }
+  return await zip.generateAsync({type:'arraybuffer', compression:'DEFLATE', compressionOptions:{level:6}});
+}
+
 // ── EXPORTAR EXCEL (.XLSX) — ENGINEERING GRADE ──
 function exportExcel() {
   if (records.length === 0) { showToast('No hay registros para exportar', true); return; }
   if (typeof XLSX === 'undefined') { showToast('Error: librería Excel no cargó. Verifica tu conexión e intenta de nuevo.', true); return; }
   try {
   const wb = XLSX.utils.book_new();
+  var chartData = { tester:[], operator:[], fails:[] };
   const today = new Date().toLocaleDateString('es-MX');
   const todayISO = new Date().toISOString().slice(0,10);
 
@@ -2137,7 +2273,7 @@ function exportExcel() {
       ['3','REGISTROS', 'Tabla resumen de todos los registros capturados'],
       ['4','DASHBOARD', 'KPIs operativos y análisis estadístico'],
       ['5','DEFECTOS',  'Análisis de defectos: Detección (Tester) vs Operador'],
-      ['6','PARETO',    'Análisis Pareto 80/20 — defectos críticos por tipo'],
+      ['6','GRAFICAS',  'Gráficas 2D columna — Defectos Tester, Operador y Fallas frecuentes'],
       ['7','CATÁLOGOS', 'Catálogos de referencia: componentes, pruebas y fallas'],
     ];
     sheetList.forEach(row => aoa.push([...row,'']));
@@ -2554,175 +2690,34 @@ function exportExcel() {
   }
 
   // ════════════════════════════════════════════════════════
-  // HOJA 6: PARETO  (Visual bar chart — cell fill simulation)
+  // HOJA 6: GRAFICAS  (2D column charts — injected via OOXML/JSZip)
   // ════════════════════════════════════════════════════════
   {
-    // ── Config ──────────────────────────────────────────
-    var BC=20;                       // bar columns
-    var C_NAME=0,C_RNK=1,C_BAR0=2;  // col indices
-    var C_BAR1=C_BAR0+BC-1;          // last bar col  = 21 (V)
-    var C_N=C_BAR1+1,C_PCT=C_N+1,C_ACUM=C_PCT+1; // 22,23,24 = W,X,Y
-    var C_THRESH=C_BAR0+Math.round(BC*0.8); // 80% position col = 18 (S)
-    var TCOLS=C_ACUM+1;              // 25 total cols
-    // Friendly pastel palette
-    var V_BAR='93C5FD',V_BAR2='BFDBFE';  // sky-400/200 vital few
-    var T_BAR='BAE6FD',T_BAR2='E0F2FE';  // sky-200/100 trivial many
-    var EMPTY='F1F5F9';              // slate-100 empty bar cell
-    var THRESH_C='FDE68A';           // amber-200 80% column
-    var ACUM_C='FED7AA',ACUM_T='C2410C'; // orange-200/700 cumulative
-
-    function pCL(i){if(i<26)return String.fromCharCode(65+i);
-      return String.fromCharCode(64+Math.floor(i/26))+String.fromCharCode(65+i%26);}
-    function pEmptyRow(){return new Array(TCOLS).fill('');}
-
-    // ── Data ────────────────────────────────────────────
-    var detCtrP={},opCtrP={},totDetP=0,totOpP=0;
+    // Collect chart data (top 10 per category)
+    var _gDet={}, _gOp={}, _gFail={};
     records.forEach(function(r){
-      (r.defectDetection||[]).forEach(function(d){detCtrP[d]=(detCtrP[d]||0)+1;totDetP++;});
-      (r.defectOperator ||[]).forEach(function(d){opCtrP[d] =(opCtrP[d] ||0)+1;totOpP++;});
+      (r.defectDetection||[]).forEach(function(d){_gDet[d]=(_gDet[d]||0)+1;});
+      (r.defectOperator||[]).forEach(function(d){_gOp[d]=(_gOp[d]||0)+1;});
+      if(r.fail&&r.fail.toLowerCase()!=='n/a'&&r.fail.trim()!=='')
+        r.fail.split(',').forEach(function(f){var ff=f.trim();if(ff)_gFail[ff]=(_gFail[ff]||0)+1;});
     });
-    function mkP(ctr,tot){
-      if(!tot||!Object.keys(ctr).length)return[];
-      var s=Object.entries(ctr).sort(function(a,b){return b[1]-a[1];}),mx=s[0][1],cum=0;
-      return s.slice(0,12).map(function(e,i){cum+=e[1];var cp=cum/tot*100;
-        return{rank:i+1,name:e[0],n:e[1],pct:(e[1]/tot*100).toFixed(1)+'%',
-          fill:Math.max(1,Math.round(e[1]/mx*BC)),
-          acumPct:cp,cumul:cp.toFixed(1)+'%',vital:cp<=80.01};});
+    function _topN(ctr,n){
+      return Object.entries(ctr).sort(function(a,b){return b[1]-a[1];}).slice(0,n)
+        .map(function(e){return{label:e[0],value:e[1]};});
     }
-    var dP=mkP(detCtrP,totDetP),oP=mkP(opCtrP,totOpP);
-    function nVit(a){return a.filter(function(r){return r.vital;}).length;}
+    chartData.tester   = _topN(_gDet, 10);
+    chartData.operator = _topN(_gOp,  10);
+    chartData.fails    = _topN(_gFail, 10);
 
-    // ── Build aoa ───────────────────────────────────────
     const aoa=[];
-    var r0=pEmptyRow(); r0[0]='TELAMON  ·  ANÁLISIS PARETO  |  TOP DEFECTOS — WIRE HARNESS'; aoa.push(r0);
-    var r1=pEmptyRow(); r1[0]=today+'  ·  Principio 80/20: los pocos defectos que generan el mayor impacto  ·  Made by: Arturo Rebolledo Avelino'; aoa.push(r1);
-    aoa.push(pEmptyRow());
-    var rSum=pEmptyRow(); rSum[0]='RESUMEN EJECUTIVO — PRINCIPIO 80/20'; aoa.push(rSum);
-    var rS1=pEmptyRow(); rS1[0]='Defectos Tester';  rS1[1]=totDetP; rS1[2]=nVit(dP)+' de '+(dP.length||0)+' tipos causan el 80%'; aoa.push(rS1);
-    var rS2=pEmptyRow(); rS2[0]='Defectos Operador';rS2[1]=totOpP;  rS2[2]=nVit(oP)+' de '+(oP.length||0)+' tipos causan el 80%'; aoa.push(rS2);
-    aoa.push(pEmptyRow());
-
-    // Track style info per data row
-    var styleRows=[];
-
-    function addSection(pareto,title){
-      // header
-      var hdrIdx=aoa.length;
-      var hRow=pEmptyRow();
-      hRow[C_NAME]=title; hRow[C_RNK]='#';
-      hRow[C_BAR0]='◀  BARRA  (proporcional al máximo —  col S = umbral 80%)';
-      hRow[C_N]='N'; hRow[C_PCT]='% TOT'; hRow[C_ACUM]='ACUM %';
-      aoa.push(hRow);
-      styleRows.push({idx:hdrIdx,type:'hdr'});
-
-      if(!pareto.length){
-        var eRow=pEmptyRow(); eRow[C_NAME]='Sin defectos registrados'; aoa.push(eRow); return;
-      }
-
-      var prevVital=true;
-      pareto.forEach(function(row,i){
-        // separator at 80% boundary
-        if(i>0 && !row.vital && prevVital){
-          var sepIdx=aoa.length;
-          var sep=pEmptyRow();
-          sep[C_NAME]='◄  VITAL FEW — acción inmediata   ·  80% ACUMULADO ·   TRIVIAL MANY — monitorear  ►';
-          aoa.push(sep);
-          styleRows.push({idx:sepIdx,type:'sep'});
-        }
-        prevVital=row.vital;
-        var dRowIdx=aoa.length;
-        var dRow=pEmptyRow();
-        dRow[C_NAME]=row.name; dRow[C_RNK]=row.rank;
-        dRow[C_N]=row.n; dRow[C_PCT]=row.pct; dRow[C_ACUM]=row.cumul;
-        aoa.push(dRow);
-        styleRows.push({idx:dRowIdx,type:'data',fill:row.fill,vital:row.vital,acumPct:row.acumPct,altRow:i%2});
-      });
-      aoa.push(pEmptyRow());
-    }
-
-    addSection(dP,'DEFECTO DE DETECCIÓN  —  TESTER');
-    addSection(oP,'DEFECTO DE OPERADOR');
-
-    var legIdx=aoa.length;
-    var legR=pEmptyRow();
-    legR[0]='LEYENDA:   Azul = VITAL FEW (≤80% acum — acción inmediata)   Celeste = TRIVIAL MANY (>80%)   Ámbar (col S) = umbral 80%   Naranja = % acumulado';
-    aoa.push(legR);
-
-    // ── Sheet & cols ────────────────────────────────────
-    const ws=XLSX.utils.aoa_to_sheet(aoa);
-    var cols=[{wch:38},{wch:4}];
-    for(var bci=0;bci<BC;bci++) cols.push({wch:2.2});
-    cols.push({wch:7},{wch:8},{wch:9});
-    ws['!cols']=cols;
-
-    // ── Merges ──────────────────────────────────────────
-    var merges=[mergeRow(0,0,TCOLS-1),mergeRow(1,0,TCOLS-1),mergeRow(3,0,TCOLS-1),
-                mergeRow(legIdx,0,TCOLS-1),
-                {s:{r:4,c:2},e:{r:4,c:TCOLS-1}},{s:{r:5,c:2},e:{r:5,c:TCOLS-1}}];
-    styleRows.forEach(function(sm){
-      if(sm.type==='hdr')  merges.push({s:{r:sm.idx,c:C_BAR0},e:{r:sm.idx,c:C_BAR1}});
-      if(sm.type==='sep')  merges.push({s:{r:sm.idx,c:0},e:{r:sm.idx,c:TCOLS-1}});
-    });
-    ws['!merges']=merges;
-
-    // ── Base styles ─────────────────────────────────────
+    aoa.push(['TELAMON  ·  GRÁFICAS  |  ANÁLISIS VISUAL DE DEFECTOS Y FALLAS','','','']);
+    aoa.push(['Exportado: '+today+'  ·  Made by: Arturo Rebolledo Avelino','','','']);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols']=[{wch:20},{wch:20},{wch:20},{wch:20}];
+    ws['!merges']=[mergeRow(0,0,3),mergeRow(1,0,3)];
     if(ws['A1']) ws['A1'].s=stTitle();
     if(ws['A2']) ws['A2'].s=stSub();
-    if(ws['A4']) ws['A4'].s=stSecHdr();
-    if(ws['A5']){ws['A5'].s=st('92400E',C.amberLt,{bold:true,sz:10});}
-    if(ws['B5']){ws['B5'].s=stCtr('92400E',C.amberLt);}
-    if(ws['C5']){ws['C5'].s=st(C.gray,C.amberLt,{sz:9,italic:true,wrap:false});}
-    if(ws['A6']){ws['A6'].s=st('1E40AF',C.blueLt,{bold:true,sz:10});}
-    if(ws['B6']){ws['B6'].s=stCtr('1E40AF',C.blueLt);}
-    if(ws['C6']){ws['C6'].s=st(C.gray,C.blueLt,{sz:9,italic:true,wrap:false});}
-    if(ws['A'+(legIdx+1)]) ws['A'+(legIdx+1)].s=st(C.gray,'F8FAFC',{sz:9,italic:true,wrap:false});
-
-    // ── Per-row styles ───────────────────────────────────
-    // Track which header color to use (alternating teal/blue per section)
-    var secColors=[C.blue,C.teal]; var secIdx=0;
-    styleRows.forEach(function(sm){
-      var er=sm.idx+1;
-      if(sm.type==='hdr'){
-        var hc=secColors[secIdx%2]; secIdx++;
-        [pCL(C_NAME),pCL(C_RNK),pCL(C_BAR0),pCL(C_N),pCL(C_PCT),pCL(C_ACUM)].forEach(function(c){
-          var ref=c+er; if(ws[ref]) ws[ref].s=stHdr(hc);
-        });
-      } else if(sm.type==='sep'){
-        for(var ci2=0;ci2<TCOLS;ci2++){var ref2=pCL(ci2)+er;if(!ws[ref2])ws[ref2]={v:'',t:'s'};ws[ref2].s=st(C.amber,'FEF3C7',{bold:true,sz:9,italic:true,halign:'center'});}
-      } else if(sm.type==='data'){
-        var v=sm.vital; var alt=sm.altRow;
-        var rowBg=v?(alt?'EFF6FF':'DBEAFE'):(alt?'F0F9FF':'E0F2FE'); // blue-50/100 vs sky-50/100
-        // Name
-        if(ws[pCL(C_NAME)+er]) ws[pCL(C_NAME)+er].s=st(v?'1E3A8A':'334155',rowBg,{sz:10,bold:v,wrap:false});
-        // Rank
-        if(ws[pCL(C_RNK)+er]) ws[pCL(C_RNK)+er].s=stCtr(v?'1E40AF':'475569',rowBg,{bold:v,sz:9});
-        // Bar cells
-        for(var bc2=C_BAR0;bc2<=C_BAR1;bc2++){
-          var cref=pCL(bc2)+er;
-          if(!ws[cref]) ws[cref]={v:'',t:'s'};
-          var isFill=bc2<C_BAR0+sm.fill;
-          var isThr=bc2===C_THRESH;
-          if(isFill){
-            ws[cref].s=st(v?V_BAR:T_BAR,v?V_BAR:T_BAR,{});
-          } else if(isThr){
-            ws[cref].s=st(THRESH_C,THRESH_C,{});
-          } else {
-            ws[cref].s=st(EMPTY,EMPTY,{});
-          }
-        }
-        // Cumulative dot: mark the cell at cumulative % position
-        var cumulCol=C_BAR0+Math.min(BC-1,Math.round(sm.acumPct/100*BC));
-        var cref2=pCL(cumulCol)+er;
-        if(!ws[cref2]) ws[cref2]={v:'▲',t:'s'};
-        else ws[cref2].v='▲';
-        ws[cref2].s=st(ACUM_T,ACUM_C,{bold:true,halign:'center',sz:8});
-        // N, %, ACUM%
-        if(ws[pCL(C_N)+er])   ws[pCL(C_N)+er].s=stCtr(v?'1E40AF':'475569',rowBg,{bold:v});
-        if(ws[pCL(C_PCT)+er]) ws[pCL(C_PCT)+er].s=stCtr(v?'1E40AF':'475569',rowBg);
-        if(ws[pCL(C_ACUM)+er])ws[pCL(C_ACUM)+er].s=stCtr(ACUM_T,ACUM_C,{bold:true,sz:10});
-      }
-    });
-    XLSX.utils.book_append_sheet(wb, ws, 'PARETO');
+    XLSX.utils.book_append_sheet(wb, ws, 'GRAFICAS');
   }
 
   // ════════════════════════════════════════════════════════
@@ -2801,20 +2796,31 @@ function exportExcel() {
     XLSX.utils.book_append_sheet(wb, ws, 'CATÁLOGOS');
   }
 
-  // ── WRITE FILE ──
-  try {
-    XLSX.writeFile(wb, 'Telamon_Registro_'+todayISO+'.xlsx');
-  } catch(writeErr) {
-    // Fallback: manual blob download
-    var wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
-    var blob = new Blob([wbout], {type:'application/octet-stream'});
+  // ── WRITE FILE (async chart injection via JSZip) ──
+  var _fname = 'Telamon_Registro_'+todayISO+'.xlsx';
+  var _rcnt  = records.length;
+  _injectCharts(wb, chartData).then(function(buf) {
+    var blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
-    a.href = url; a.download = 'Telamon_Registro_'+todayISO+'.xlsx';
+    a.href = url; a.download = _fname;
     document.body.appendChild(a); a.click();
     setTimeout(function(){ URL.revokeObjectURL(url); document.body.removeChild(a); }, 500);
-  }
-  showToast('✓ Excel exportado — '+records.length+' registros, 6 hojas');
+    showToast('✓ Excel exportado — '+_rcnt+' registros, 7 hojas');
+  }).catch(function(chartErr) {
+    console.warn('Chart injection failed, downloading without charts:', chartErr);
+    try { XLSX.writeFile(wb, _fname); }
+    catch(we) {
+      var wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+      var blob2 = new Blob([wbout], {type:'application/octet-stream'});
+      var url2 = URL.createObjectURL(blob2);
+      var a2 = document.createElement('a');
+      a2.href = url2; a2.download = _fname;
+      document.body.appendChild(a2); a2.click();
+      setTimeout(function(){ URL.revokeObjectURL(url2); document.body.removeChild(a2); }, 500);
+    }
+    showToast('✓ Excel exportado — '+_rcnt+' registros (sin graficas)');
+  });
   } catch(e) {
     console.error('exportExcel error:', e);
     showToast('Error al generar Excel: '+e.message, true);
