@@ -3042,6 +3042,36 @@ function _makeDrawing() {
   anch(3,'Fallas Comunes',    'rId3', 0,20, 21,40) +
   '</xdr:wsDr>';
 }
+// Devuelve la ruta real de xl/worksheets/sheetN.xml para una hoja dada,
+// siguiendo workbook.xml -> workbook.xml.rels. Cae al índice de SheetNames
+// si el mapeo por relaciones no resuelve.
+async function _sheetPartPath(zip, wb, name) {
+  try {
+    var wbXml = await zip.file('xl/workbook.xml').async('string');
+    var re = /<sheet\b[^>]*>/g, tag;
+    while ((tag = re.exec(wbXml))) {
+      var nm = tag[0].match(/name="([^"]*)"/);
+      if (!nm || _unescX(nm[1]) !== name) continue;
+      var rid = tag[0].match(/r:id="([^"]*)"/);
+      if (!rid) break;
+      var relsXml = await zip.file('xl/_rels/workbook.xml.rels').async('string');
+      var rel = new RegExp('<Relationship[^>]*Id="'+rid[1]+'"[^>]*>').exec(relsXml);
+      var tgt = rel && rel[0].match(/Target="([^"]*)"/);
+      if (!tgt) break;
+      var p = tgt[1].replace(/^\/?xl\//, '').replace(/^\//, '');
+      if (zip.file('xl/'+p)) return 'xl/'+p;
+      break;
+    }
+  } catch (e) { /* cae al índice */ }
+  var i = wb.SheetNames.indexOf(name);
+  if (i < 0) return null;
+  var guess = 'xl/worksheets/sheet'+(i+1)+'.xml';
+  return zip.file(guess) ? guess : null;
+}
+function _unescX(s) {
+  return String(s).replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+    .replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&');
+}
 async function _injectCharts(wb, chartData) {
   var wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
   if (typeof JSZip === 'undefined') return wbout;
@@ -3060,17 +3090,37 @@ async function _injectCharts(wb, chartData) {
     '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart2.xml"/>' +
     '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart3.xml"/>' +
     '</Relationships>');
-  zip.file('xl/worksheets/_rels/sheet6.xml.rels',
-    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
-    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>' +
-    '</Relationships>');
-  var sh6 = await zip.file('xl/worksheets/sheet6.xml').async('string');
-  if (!sh6.includes('<drawing')) {
-    if (!sh6.includes('xmlns:r='))
-      sh6 = sh6.replace(/(<worksheet\b[^>]*)(>)/, '$1 xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"$2');
-    sh6 = sh6.replace('</worksheet>', '<drawing r:id="rId1"/></worksheet>');
-    zip.file('xl/worksheets/sheet6.xml', sh6);
+  // Resolver la hoja GRAFICAS por nombre, no por posición: si se agrega otra
+  // hoja antes, el número de sheetN.xml cambia y las gráficas se pegarían en
+  // la hoja equivocada.
+  var shPath = await _sheetPartPath(zip, wb, 'GRAFICAS');
+  if (!shPath) return wbout;
+  var relPath = shPath.replace(/worksheets\/([^/]+)$/, 'worksheets/_rels/$1.rels');
+  var DRAW_REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing';
+  var relFile = zip.file(relPath), drawId = 'rId1';
+  if (relFile) {
+    var relXml = await relFile.async('string');
+    var n = 1; while (relXml.indexOf('Id="rId'+n+'"') !== -1) n++;
+    drawId = 'rId'+n;
+    zip.file(relPath, relXml.replace('</Relationships>',
+      '<Relationship Id="'+drawId+'" Type="'+DRAW_REL+'" Target="../drawings/drawing1.xml"/></Relationships>'));
+  } else {
+    zip.file(relPath,
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="'+drawId+'" Type="'+DRAW_REL+'" Target="../drawings/drawing1.xml"/>' +
+      '</Relationships>');
+  }
+  var shXml = await zip.file(shPath).async('string');
+  if (!shXml.includes('<drawing')) {
+    if (!shXml.includes('xmlns:r='))
+      shXml = shXml.replace(/(<worksheet\b[^>]*)(>)/, '$1 xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"$2');
+    // <drawing> va antes de tableParts/extLst según el esquema de CT_Worksheet.
+    var tag = '<drawing r:id="'+drawId+'"/>';
+    var m = shXml.match(/<(tableParts|extLst)\b/);
+    shXml = m ? shXml.slice(0, m.index) + tag + shXml.slice(m.index)
+              : shXml.replace('</worksheet>', tag+'</worksheet>');
+    zip.file(shPath, shXml);
   }
   var ct = await zip.file('[Content_Types].xml').async('string');
   if (!ct.includes('chart1.xml')) {
@@ -3175,8 +3225,9 @@ function exportExcel() {
       ['3','REGISTROS', 'Tabla resumen de todos los registros capturados'],
       ['4','DASHBOARD', 'KPIs operativos y análisis estadístico'],
       ['5','DEFECTOS',  'Análisis de defectos: Detección (Tester) vs Operador'],
-      ['6','GRAFICAS',  'Gráficas 2D columna — Defectos Tester, Operador y Fallas frecuentes'],
-      ['7','CATÁLOGOS', 'Catálogos de referencia: componentes, pruebas y fallas'],
+      ['6','TIS-F0124', 'Pareto por código de defecto y severidad A/B/C'],
+      ['7','GRAFICAS',  'Gráficas 2D columna — Defectos Tester, Operador y Fallas frecuentes'],
+      ['8','CATÁLOGOS', 'Catálogos de referencia: componentes, pruebas y fallas'],
     ];
     sheetList.forEach(row => aoa.push([...row,'']));
 
@@ -3719,7 +3770,7 @@ function exportExcel() {
     XLSX.utils.book_append_sheet(wb, ws, 'TIS-F0124');
   }
 
-  // HOJA 6: GRAFICAS  (2D column charts — injected via OOXML/JSZip)
+  // HOJA 7: GRAFICAS  (2D column charts — injected via OOXML/JSZip)
   // ════════════════════════════════════════════════════════
   {
     // Collect chart data (top 10 per category)
@@ -3750,7 +3801,7 @@ function exportExcel() {
   }
 
   // ════════════════════════════════════════════════════════
-  // HOJA 7: CATÁLOGOS
+  // HOJA 8: CATÁLOGOS
   // ════════════════════════════════════════════════════════
   {
     const aoa=[];
