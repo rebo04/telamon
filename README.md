@@ -31,13 +31,17 @@ severidad A/B/C según el criterio del propio documento.
 ### Cómo capturar un defecto
 
 1. En el bloque del Part Number, toca **`+ Agregar defecto`**.
-2. Escribe en el buscador. Funciona con lo que sea que recuerdes:
-   - el nombre — `terminal`, `encintado`, `barcode`
-   - el código — `TE`, `PIG`
-   - el tipo — `roto`, `faltante`, `36`
-3. Toca el **elemento** (columna izquierda) y el **tipo de defecto** (columna
-   derecha). Abajo aparece el código armado y la severidad sugerida.
-4. **Agregar**.
+2. Se abren dos columnas, **cada una con su propio buscador**:
+   - **Izquierda, el elemento** — qué pieza es. Busca por nombre (`terminal`,
+     `encintado`, `barcode`) o por código (`TE`, `PIG`).
+   - **Derecha, el tipo de defecto** — qué le pasa. Busca por nombre (`roto`,
+     `faltante`) o por número (`36`).
+3. Toca uno de cada lado. Lo que elijas se queda resaltado y la lista se acomoda
+   sola para que lo veas.
+4. Abajo aparece el código armado con su severidad. **Agregar**.
+
+Los dos buscadores son independientes a propósito: "terminal" es un elemento y
+"roto" es un tipo, y casi nunca vas a querer buscar lo mismo en ambos.
 
 El defecto queda como una línea con su color de severidad:
 
