@@ -6,7 +6,7 @@ como app instalada, funciona sin internet y sincroniza a Firebase cuando hay red
 **App:** https://rebo04.github.io/telamon
 **Codificación de defectos:** TIS-F0124 Rev. 9 (2024-09-17)
 
-Creado por **Arturo Rebolledo** · con la colaboración de **David Dorado**
+Designed by **Arturo Rebolledo Avelino**
 
 ---
 
