@@ -19,7 +19,10 @@ function recWithParts(partnums, overrides = {}) {
 
 describe('computeHistoryStats', () => {
   it('returns all zeros for an empty records array', () => {
-    expect(computeHistoryStats([])).toEqual({ total: 0, ok: 0, fail: 0, testers: 0 });
+    expect(computeHistoryStats([])).toEqual({
+      total: 0, ok: 0, fail: 0, testers: 0,
+      severidad: { A: 0, B: 0, C: 0 }, sinClasificar: 0,
+    });
   });
 
   it('counts a single record without parts as total=1', () => {

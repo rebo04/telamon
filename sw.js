@@ -1,4 +1,8 @@
-const CACHE = 'telamon-qc-v1';
+// Subir esta versión en CADA release que toque index.html.
+// La estrategia es cache-first: si el nombre no cambia, los iPads que ya
+// instalaron la app seguirían sirviendo la versión vieja para siempre.
+// v2 — catálogo de defectos TIS-F0124 Rev.9
+const CACHE = 'telamon-qc-v2';
 const ASSETS = [
   './index.html',
   './manifest.json',

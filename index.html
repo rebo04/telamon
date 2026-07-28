@@ -1485,6 +1485,42 @@ body.role-papoi .papoi-only { display: inline-flex !important; }
   </div>
 </div>
 
+<!-- Selector de defecto TIS-F0124: elemento (71) × tipo (72) -->
+<div id="defsel-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.55);z-index:9000;align-items:center;justify-content:center;padding:14px;">
+  <div style="background:var(--bg,#fff);border-radius:14px;width:100%;max-width:860px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.3);">
+    <div style="padding:15px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div>
+        <div style="font-size:15px;font-weight:800;">Codificar defecto</div>
+        <div style="font-size:11px;color:var(--muted);" id="defsel-sello"></div>
+      </div>
+      <button type="button" onclick="cerrarSelectorDefecto()" style="background:none;border:none;font-size:24px;line-height:1;color:var(--muted);cursor:pointer;padding:0 4px;">✕</button>
+    </div>
+
+    <div style="padding:12px 18px;border-bottom:1px solid var(--border);">
+      <input id="defsel-q" type="text" placeholder="Buscar por código o nombre — ej. &quot;terminal&quot;, &quot;TE&quot;, &quot;roto&quot;, &quot;36&quot;"
+        oninput="filtrarSelector()" autocomplete="off"
+        style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-dark);font-family:var(--font);font-size:15px;padding:11px 13px;outline:none;">
+      <div id="defsel-preview" style="margin-top:10px;font-size:13px;min-height:22px;"></div>
+    </div>
+
+    <div style="display:flex;gap:0;flex:1;min-height:0;">
+      <div style="flex:1;display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--border);">
+        <div style="padding:9px 14px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);background:var(--surface);">1 · Elemento</div>
+        <div id="defsel-elems" style="overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;"></div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+        <div style="padding:9px 14px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);background:var(--surface);">2 · Tipo de defecto</div>
+        <div id="defsel-tipos" style="overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;"></div>
+      </div>
+    </div>
+
+    <div style="padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">
+      <button type="button" onclick="cerrarSelectorDefecto()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 18px;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;">Cancelar</button>
+      <button type="button" id="defsel-ok" onclick="confirmarSelectorDefecto()" disabled style="background:var(--accent2);border:none;border-radius:var(--radius);color:#fff;padding:10px 22px;font-family:var(--font);font-size:14px;font-weight:800;cursor:pointer;opacity:0.45;">Agregar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast">
   <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
   <span id="toast-msg">Registro guardado</span>
@@ -1525,8 +1561,10 @@ const TESTS = [
   'Poka-Yoke'
 ];
 
-// ── FALLAS COMUNES ──
-const FAILURES = [
+// ── CATÁLOGO DE FALLAS ANTERIOR A TIS-F0124 ──
+// Ya no se captura con él. Se conserva sólo para releer y migrar el
+// historial. No agregar entradas: el catálogo vigente es TIS-F0124.
+const FALLAS_LEGADO = [
   'Terminal no insertada (Push-back)',
   'Cables invertidos (Miswire)',
   'Circuito abierto / Sin continuidad',
@@ -1538,6 +1576,623 @@ const FAILURES = [
   'Encintado defectuoso / Faltante',
   'Terminal dañada / Deformada'
 ];
+
+// <<< TIS-F0124 AUTOGENERADO — no editar aquí, ver tools/sync-inline.py
+// ── tis-f0124.js ────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────
+// ARCHIVO GENERADO — NO EDITAR A MANO.
+// Fuente: TIS-F0124 - Código de Defectos (S).xlsx
+// Regenerar: python3 tools/gen-catalog.py <ruta-al-xlsx>
+// ─────────────────────────────────────────────────────────────────────
+
+const TIS_F0124_FORM  = 'TIS-F0124';
+const TIS_F0124_REV   = 9;
+const TIS_F0124_FECHA = '2024-09-17';
+const TIS_F0124_SELLO = 'TIS-F0124 Rev.9 (2024-09-17)';
+
+// ── ELEMENTOS (columna A/B del documento) ──────────────────────────
+const ELEMENTOS = [
+  { code: 'AI', nombre: 'Aislante', clase: 'ELEC', buscar: 'ai aislante' },
+  { code: 'AM', nombre: 'Amarre', clase: 'MEC', buscar: 'am amarre' },
+  { code: 'AR', nombre: 'Arnés', clase: 'MEC', buscar: 'ar arnes' },
+  { code: 'ARA', nombre: 'Arandela', clase: 'MEC', buscar: 'ara arandela' },
+  { code: 'BC', nombre: 'Barra de corto circuito', clase: 'ELEC', buscar: 'bc barra de corto circuito' },
+  { code: 'BA', nombre: 'Base', clase: 'MEC', buscar: 'ba base' },
+  { code: 'BO', nombre: 'Bota', clase: 'MEC', buscar: 'bo bota' },
+  { code: 'BR', nombre: 'Brocha', clase: 'PROC', buscar: 'br brocha' },
+  { code: 'BU', nombre: 'Bumper', clase: 'MEC', buscar: 'bu bumper' },
+  { code: 'CA', nombre: 'Cable', clase: 'ELEC', buscar: 'ca cable' },
+  { code: 'CAM', nombre: 'Campana', clase: 'MEC', buscar: 'cam campana' },
+  { code: 'CAN', nombre: 'Canaleta', clase: 'MEC', buscar: 'can canaleta' },
+  { code: 'CM', nombre: 'Candado Primario', clase: 'ELEC', buscar: 'cm candado primario' },
+  { code: 'CS', nombre: 'Candado Secundario', clase: 'ELEC', buscar: 'cs candado secundario' },
+  { code: 'CV', nombre: 'Cavidad', clase: 'ELEC', buscar: 'cv cavidad' },
+  { code: 'CO', nombre: 'Clip Corbata', clase: 'MEC', buscar: 'co clip corbata' },
+  { code: 'CR', nombre: 'Clip Encintado', clase: 'MEC', buscar: 'cr clip encintado' },
+  { code: 'CC', nombre: 'Clip del Conector', clase: 'MEC', buscar: 'cc clip del conector' },
+  { code: 'CB', nombre: 'Código de Barras', clase: 'IDENT', buscar: 'cb codigo de barras' },
+  { code: 'CI', nombre: 'Conector del Inflador', clase: 'ELEC', buscar: 'ci conector del inflador' },
+  { code: 'CP', nombre: 'Conector Principal', clase: 'ELEC', buscar: 'cp conector principal' },
+  { code: 'CN', nombre: 'Continuidad', clase: 'ELEC', buscar: 'cn continuidad' },
+  { code: 'CL', nombre: 'Coupler', clase: 'ELEC', buscar: 'cl coupler' },
+  { code: 'CPA', nombre: 'CPA', clase: 'ELEC', buscar: 'cpa cpa' },
+  { code: 'DE', nombre: 'Desforre', clase: 'ELEC', buscar: 'de desforre' },
+  { code: 'EM', nombre: 'Empalme', clase: 'ELEC', buscar: 'em empalme' },
+  { code: 'EQ', nombre: 'Equipo', clase: 'PROC', buscar: 'eq equipo' },
+  { code: 'EN', nombre: 'Encintado / Cinta', clase: 'PROT', buscar: 'en encintado / cinta' },
+  { code: 'EST', nombre: 'Estaño', clase: 'ELEC', buscar: 'est estano' },
+  { code: 'ET', nombre: 'Etiqueta (caja)', clase: 'IDENT', buscar: 'et etiqueta (caja)' },
+  { code: 'FE', nombre: 'Ferrita', clase: 'ELEC', buscar: 'fe ferrita' },
+  { code: 'HI', nombre: 'Hilos', clase: 'ELEC', buscar: 'hi hilos' },
+  { code: 'LT', nombre: 'Lengüeta de la Terminal', clase: 'ELEC', buscar: 'lt lengueta de la terminal' },
+  { code: 'MT', nombre: 'Marca de Tester', clase: 'IDENT', buscar: 'mt marca de tester' },
+  { code: 'MU', nombre: 'Muestras', clase: 'PROC', buscar: 'mu muestras' },
+  { code: 'PS', nombre: 'Placa Metálica del Switch', clase: 'ELEC', buscar: 'ps placa metalica del switch' },
+  { code: 'PC', nombre: 'Prensado del Cable', clase: 'ELEC', buscar: 'pc prensado del cable' },
+  { code: 'PA', nombre: 'Prensado del Aislante', clase: 'ELEC', buscar: 'pa prensado del aislante' },
+  { code: 'RO', nombre: 'Rondana', clase: 'MEC', buscar: 'ro rondana' },
+  { code: 'REM', nombre: 'Remache', clase: 'MEC', buscar: 'rem remache' },
+  { code: 'RES', nombre: 'Resorte', clase: 'ELEC', buscar: 'res resorte' },
+  { code: 'SE', nombre: 'Sello', clase: 'MEC', buscar: 'se sello' },
+  { code: 'SC', nombre: 'Sobrante de corbata', clase: 'PROT', buscar: 'sc sobrante de corbata' },
+  { code: 'SO', nombre: 'Soldadura', clase: 'ELEC', buscar: 'so soldadura' },
+  { code: 'SW', nombre: 'Switch', clase: 'ELEC', buscar: 'sw switch' },
+  { code: 'TA', nombre: 'Tapa / Cubierta', clase: 'MEC', buscar: 'ta tapa / cubierta' },
+  { code: 'TE', nombre: 'Terminal', clase: 'ELEC', buscar: 'te terminal' },
+  { code: 'TC', nombre: 'Tubo Corrugado', clase: 'PROT', buscar: 'tc tubo corrugado' },
+  { code: 'TO', nombre: 'Tornillo', clase: 'MEC', buscar: 'to tornillo' },
+  { code: 'TP', nombre: 'Tubo PVC', clase: 'PROT', buscar: 'tp tubo pvc' },
+  { code: 'TR', nombre: 'Tubo Reductible', clase: 'PROT', buscar: 'tr tubo reductible' },
+  { code: 'TT', nombre: 'Tubo de Tela', clase: 'PROT', buscar: 'tt tubo de tela' },
+  { code: 'VE', nombre: 'Ventana', clase: 'MEC', buscar: 've ventana' },
+  { code: 'RA', nombre: 'Ramal', clase: 'MEC', buscar: 'ra ramal' },
+  { code: 'CE', nombre: 'Marca de Certificacion', clase: 'IDENT', buscar: 'ce marca de certificacion' },
+  { code: 'TU', nombre: 'Tuerca', clase: 'MEC', buscar: 'tu tuerca' },
+  { code: 'BT', nombre: 'Bloque de Terminales (Block Terminal)', clase: 'ELEC', buscar: 'bt bloque de terminales (block terminal)' },
+  { code: 'DI', nombre: 'Dimencion', clase: 'MEC', buscar: 'di dimencion' },
+  { code: 'RE', nombre: 'Rebaba', clase: 'MEC', buscar: 're rebaba' },
+  { code: 'AL', nombre: 'Ala de la Terminal', clase: 'ELEC', buscar: 'al ala de la terminal' },
+  { code: 'EE', nombre: 'Encintado de Esponja', clase: 'PROT', buscar: 'ee encintado de esponja' },
+  { code: 'ES', nombre: 'Estompiado', clase: 'ELEC', buscar: 'es estompiado' },
+  { code: 'MA', nombre: 'Maquina', clase: 'PROC', buscar: 'ma maquina' },
+  { code: 'PI', nombre: 'Pin', clase: 'ELEC', buscar: 'pi pin' },
+  { code: 'TS', nombre: 'Terminal Alimentacion Trasera', clase: 'ELEC', buscar: 'ts terminal alimentacion trasera' },
+  { code: 'MAN', nombre: 'Manga', clase: 'PROT', buscar: 'man manga' },
+  { code: 'GRA', nombre: 'Grapa', clase: 'MEC', buscar: 'gra grapa' },
+  { code: 'FLS', nombre: 'Flash', clase: 'MEC', buscar: 'fls flash' },
+  { code: 'RAS', nombre: 'Rastreabilidad', clase: 'IDENT', buscar: 'ras rastreabilidad' },
+  { code: 'PIG', nombre: 'Pigtail', clase: 'ELEC', buscar: 'pig pigtail' },
+  { code: 'ENM', nombre: 'Encintado en manga', clase: 'PROT', buscar: 'enm encintado en manga' },
+];
+
+// ── TIPOS DE DEFECTO (columna C/D del documento) ───────────────────
+const TIPOS = [
+  { num: 1, nombre: 'Abierto', clase: 'FUNC', buscar: '1 abierto' },
+  { num: 2, nombre: 'Adhesivo Expuesto', clase: 'COSM', buscar: '2 adhesivo expuesto' },
+  { num: 3, nombre: 'Aplicado Incorrectamente', clase: 'ENS', buscar: '3 aplicado incorrectamente' },
+  { num: 4, nombre: 'Resistencia fuera de especificacion', clase: 'FUNC', buscar: '4 resistencia fuera de especificacion' },
+  { num: 5, nombre: 'Colapsado', clase: 'FUNC', buscar: '5 colapsado' },
+  { num: 6, nombre: 'Bandera', clase: 'COSM', buscar: '6 bandera' },
+  { num: 7, nombre: 'Bajo', clase: 'ENS', buscar: '7 bajo' },
+  { num: 8, nombre: 'Caido al Piso', clase: 'ENS', buscar: '8 caido al piso' },
+  { num: 9, nombre: 'Cerrado', clase: 'ENS', buscar: '9 cerrado' },
+  { num: 10, nombre: 'Contaminado', clase: 'ENS', buscar: '10 contaminado' },
+  { num: 11, nombre: 'Cortado', clase: 'FUNC', buscar: '11 cortado' },
+  { num: 12, nombre: 'Corto', clase: 'FUNC', buscar: '12 corto' },
+  { num: 13, nombre: 'Defectuoso de Proveedor', clase: 'FUNC', buscar: '13 defectuoso de proveedor' },
+  { num: 14, nombre: 'Dentro del prensado', clase: 'FUNC', buscar: '14 dentro del prensado' },
+  { num: 15, nombre: 'Desalineada', clase: 'FUNC', buscar: '15 desalineada' },
+  { num: 16, nombre: 'Desfazado', clase: 'ENS', buscar: '16 desfazado' },
+  { num: 17, nombre: 'Doble / Duplicado', clase: 'ENS', buscar: '17 doble / duplicado' },
+  { num: 18, nombre: 'Exceso', clase: 'COSM', buscar: '18 exceso' },
+  { num: 19, nombre: 'Expuesto', clase: 'FUNC', buscar: '19 expuesto' },
+  { num: 20, nombre: 'Cortado por maquina sin defecto aparente', clase: 'DISP', buscar: '20 cortado por maquina sin defecto aparente' },
+  { num: 21, nombre: 'Falta Calor', clase: 'ENS', buscar: '21 falta calor' },
+  { num: 22, nombre: 'Faltante', clase: 'ENS', buscar: '22 faltante' },
+  { num: 23, nombre: 'Flojo', clase: 'ENS', buscar: '23 flojo' },
+  { num: 24, nombre: 'Fuera de tolerancia', clase: 'ENS', buscar: '24 fuera de tolerancia' },
+  { num: 25, nombre: 'Ilegible', clase: 'IDENT', buscar: '25 ilegible' },
+  { num: 26, nombre: 'Incorrecto', clase: 'ENS', buscar: '26 incorrecto' },
+  { num: 27, nombre: 'Invertido', clase: 'FUNC', buscar: '27 invertido' },
+  { num: 28, nombre: 'Jalado', clase: 'FUNC', buscar: '28 jalado' },
+  { num: 29, nombre: 'Largo', clase: 'ENS', buscar: '29 largo' },
+  { num: 30, nombre: 'Marcado', clase: 'IDENT', buscar: '30 marcado' },
+  { num: 31, nombre: 'Menos de dos Vueltas', clase: 'ENS', buscar: '31 menos de dos vueltas' },
+  { num: 32, nombre: 'No Asentado Completamente', clase: 'FUNC', buscar: '32 no asentado completamente' },
+  { num: 33, nombre: 'Obstruida', clase: 'FUNC', buscar: '33 obstruida' },
+  { num: 34, nombre: 'Orientación Incorrecta', clase: 'ENS', buscar: '34 orientacion incorrecta' },
+  { num: 35, nombre: 'Perforado', clase: 'FUNC', buscar: '35 perforado' },
+  { num: 36, nombre: 'Roto', clase: 'FUNC', buscar: '36 roto' },
+  { num: 37, nombre: 'Quebrado', clase: 'FUNC', buscar: '37 quebrado' },
+  { num: 38, nombre: 'Quemado', clase: 'FUNC', buscar: '38 quemado' },
+  { num: 39, nombre: 'Rebaba', clase: 'COSM', buscar: '39 rebaba' },
+  { num: 40, nombre: 'Cantidad fuera del estandar', clase: 'ENS', buscar: '40 cantidad fuera del estandar' },
+  { num: 41, nombre: 'Tenso', clase: 'ENS', buscar: '41 tenso' },
+  { num: 42, nombre: 'Torcido', clase: 'ENS', buscar: '42 torcido' },
+  { num: 43, nombre: 'Desperdiciado por Mantenimiento', clase: 'DISP', buscar: '43 desperdiciado por mantenimiento' },
+  { num: 44, nombre: 'Desperdiciado por Proceso', clase: 'DISP', buscar: '44 desperdiciado por proceso' },
+  { num: 45, nombre: 'Desperdiciado por Pruebas de Calidad', clase: 'DISP', buscar: '45 desperdiciado por pruebas de calidad' },
+  { num: 46, nombre: 'Rechazado por monitor de Prensado', clase: 'FUNC', buscar: '46 rechazado por monitor de prensado' },
+  { num: 47, nombre: 'Embarrados', clase: 'FUNC', buscar: '47 embarrados' },
+  { num: 48, nombre: 'Girada', clase: 'FUNC', buscar: '48 girada' },
+  { num: 49, nombre: 'Enterrado', clase: 'FUNC', buscar: '49 enterrado' },
+  { num: 50, nombre: 'Fuera del Prensado', clase: 'FUNC', buscar: '50 fuera del prensado' },
+  { num: 51, nombre: 'Fallo por pieza no cargada correctamente en tester', clase: 'DISP', buscar: '51 fallo por pieza no cargada correctamente en tester' },
+  { num: 52, nombre: 'Retrabajo (autorizado)', clase: 'DISP', buscar: '52 retrabajo (autorizado)' },
+  { num: 53, nombre: 'Muestras de Set Up', clase: 'DISP', buscar: '53 muestras de set up' },
+  { num: 54, nombre: 'Desperdiciado por cambios o arranques de ingenieria', clase: 'DISP', buscar: '54 desperdiciado por cambios o arranques de ingenieria' },
+  { num: 55, nombre: 'Falta de calibracion', clase: 'ENS', buscar: '55 falta de calibracion' },
+  { num: 56, nombre: 'Danada', clase: 'FUNC', buscar: '56 danada' },
+  { num: 57, nombre: 'Doblado (Banana)', clase: 'FUNC', buscar: '57 doblado (banana)' },
+  { num: 58, nombre: 'Apretado', clase: 'ENS', buscar: '58 apretado' },
+  { num: 59, nombre: 'Espiral', clase: 'COSM', buscar: '59 espiral' },
+  { num: 60, nombre: 'Fallo', clase: 'FUNC', buscar: '60 fallo' },
+  { num: 61, nombre: 'Incompleto', clase: 'ENS', buscar: '61 incompleto' },
+  { num: 62, nombre: 'Sobrante', clase: 'COSM', buscar: '62 sobrante' },
+  { num: 63, nombre: 'Duplicado', clase: 'ENS', buscar: '63 duplicado' },
+  { num: 64, nombre: 'Incorrecta Operación del Operador', clase: 'ENS', buscar: '64 incorrecta operacion del operador' },
+  { num: 65, nombre: 'Golpeado', clase: 'ENS', buscar: '65 golpeado' },
+  { num: 66, nombre: 'Aplastado', clase: 'FUNC', buscar: '66 aplastado' },
+  { num: 67, nombre: 'Mezclado', clase: 'ENS', buscar: '67 mezclado' },
+  { num: 68, nombre: 'Mal identificado', clase: 'IDENT', buscar: '68 mal identificado' },
+  { num: 69, nombre: 'Fuera del encintado', clase: 'ENS', buscar: '69 fuera del encintado' },
+  { num: 70, nombre: 'Mal ruteado', clase: 'ENS', buscar: '70 mal ruteado' },
+  { num: 71, nombre: 'Deshilachado', clase: 'COSM', buscar: '71 deshilachado' },
+  { num: 72, nombre: 'Curva', clase: 'FUNC', buscar: '72 curva' },
+];
+
+// ── SEVERIDAD (hoja Sheet1 del documento) ──────────────────────────
+const SEVERIDADES = {
+  'A': 'Problemas electricos (falla funcional del arnes/vehiculo):\n-Falla de prensado (Aislante dentro del prensado, hilos cortados o fuera del prensado, no hilos dentro del prensado, etc).\n-Terminal no asentada/terminal jalada.\n-Terminales desalineadas/dobladas.\nProblemas de identificacion:\n-Barcode ilegible.\n-Falta de barcode.\n-Barcode no corresponde al arnes/NP.',
+  'B': 'Problemas de ensamble: \n-Problemas dimensionales (clip, ramales, pvc fuera de tolerancia).\n-Falta de componentes (clip faltante, encintado, candado secundarios faltantes, candandos abiertos,etc).\n-Clip equivocado.',
+  'C': 'Problemas de encintado/esteticos:\n-Encintado en bandera, encintado pobre, exceso de cinta. \n-Exceso de corbata en clip. \n-Clip deforme (se puede ensamblar).\n-PVC, corrugado, tubo de calor, mal cortado (sesgado).',
+};
+
+// ── Anclajes documentales: ganan sobre la matriz ───────────────────
+const ANCLAJES_DOC = {
+  'AI-14': { sev: 'A', cita: 'A · Falla de prensado (aislante dentro del prensado)' },
+  'CB-22': { sev: 'A', cita: 'A · Barcode ilegible / falta de barcode / barcode no corresponde al arnés o NP' },
+  'CB-25': { sev: 'A', cita: 'A · Barcode ilegible / falta de barcode / barcode no corresponde al arnés o NP' },
+  'CB-26': { sev: 'A', cita: 'A · Barcode ilegible / falta de barcode / barcode no corresponde al arnés o NP' },
+  'CC-22': { sev: 'B', cita: 'B · Falta de componentes (clip faltante, encintado, candados secundarios faltantes)' },
+  'CC-24': { sev: 'B', cita: 'B · Problemas dimensionales (clip, ramales, pvc fuera de tolerancia)' },
+  'CC-26': { sev: 'B', cita: 'B · Clip equivocado' },
+  'CC-42': { sev: 'C', cita: 'C · Clip deforme (se puede ensamblar)' },
+  'CM-1': { sev: 'B', cita: 'B · Falta de componentes (candados abiertos)' },
+  'CO-22': { sev: 'B', cita: 'B · Falta de componentes (clip faltante, encintado, candados secundarios faltantes)' },
+  'CO-24': { sev: 'B', cita: 'B · Problemas dimensionales (clip, ramales, pvc fuera de tolerancia)' },
+  'CO-26': { sev: 'B', cita: 'B · Clip equivocado' },
+  'CO-42': { sev: 'C', cita: 'C · Clip deforme (se puede ensamblar)' },
+  'CR-22': { sev: 'B', cita: 'B · Falta de componentes (clip faltante, encintado, candados secundarios faltantes)' },
+  'CR-24': { sev: 'B', cita: 'B · Problemas dimensionales (clip, ramales, pvc fuera de tolerancia)' },
+  'CR-26': { sev: 'B', cita: 'B · Clip equivocado' },
+  'CR-42': { sev: 'C', cita: 'C · Clip deforme (se puede ensamblar)' },
+  'CS-1': { sev: 'B', cita: 'B · Falta de componentes (candados abiertos)' },
+  'CS-22': { sev: 'B', cita: 'B · Falta de componentes (clip faltante, encintado, candados secundarios faltantes)' },
+  'DI-24': { sev: 'B', cita: 'B · Problemas dimensionales (clip, ramales, pvc fuera de tolerancia)' },
+  'EN-6': { sev: 'C', cita: 'C · Encintado en bandera, encintado pobre, exceso de cinta' },
+  'EN-18': { sev: 'C', cita: 'C · Encintado en bandera, encintado pobre, exceso de cinta' },
+  'EN-22': { sev: 'B', cita: 'B · Falta de componentes (clip faltante, encintado, candados secundarios faltantes)' },
+  'EN-61': { sev: 'C', cita: 'C · Encintado en bandera, encintado pobre, exceso de cinta' },
+  'HI-11': { sev: 'A', cita: 'A · Falla de prensado (hilos cortados o fuera del prensado, no hilos dentro del prensado)' },
+  'HI-14': { sev: 'A', cita: 'A · Falla de prensado (hilos cortados o fuera del prensado, no hilos dentro del prensado)' },
+  'HI-22': { sev: 'A', cita: 'A · Falla de prensado (hilos cortados o fuera del prensado, no hilos dentro del prensado)' },
+  'HI-50': { sev: 'A', cita: 'A · Falla de prensado (hilos cortados o fuera del prensado, no hilos dentro del prensado)' },
+  'PA-11': { sev: 'A', cita: 'A · Falla de prensado (aislante dentro del prensado, hilos cortados o fuera del prensado, no hilos dentro del prensado)' },
+  'PA-14': { sev: 'A', cita: 'A · Falla de prensado (aislante dentro del prensado, hilos cortados o fuera del prensado, no hilos dentro del prensado)' },
+  'PA-19': { sev: 'A', cita: 'A · Falla de prensado (aislante dentro del prensado, hilos cortados o fuera del prensado, no hilos dentro del prensado)' },
+  'PA-22': { sev: 'A', cita: 'A · Falla de prensado (aislante dentro del prensado, hilos cortados o fuera del prensado, no hilos dentro del prensado)' },
+  'PA-32': { sev: 'A', cita: 'A · Falla de prensado (aislante dentro del prensado, hilos cortados o fuera del prensado, no hilos dentro del prensado)' },
+  'PA-50': { sev: 'A', cita: 'A · Falla de prensado (aislante dentro del prensado, hilos cortados o fuera del prensado, no hilos dentro del prensado)' },
+  'PC-11': { sev: 'A', cita: 'A · Falla de prensado (aislante dentro del prensado, hilos cortados o fuera del prensado, no hilos dentro del prensado)' },
+  'PC-14': { sev: 'A', cita: 'A · Falla de prensado (aislante dentro del prensado, hilos cortados o fuera del prensado, no hilos dentro del prensado)' },
+  'PC-19': { sev: 'A', cita: 'A · Falla de prensado (aislante dentro del prensado, hilos cortados o fuera del prensado, no hilos dentro del prensado)' },
+  'PC-22': { sev: 'A', cita: 'A · Falla de prensado (aislante dentro del prensado, hilos cortados o fuera del prensado, no hilos dentro del prensado)' },
+  'PC-32': { sev: 'A', cita: 'A · Falla de prensado (aislante dentro del prensado, hilos cortados o fuera del prensado, no hilos dentro del prensado)' },
+  'PC-50': { sev: 'A', cita: 'A · Falla de prensado (aislante dentro del prensado, hilos cortados o fuera del prensado, no hilos dentro del prensado)' },
+  'RA-24': { sev: 'B', cita: 'B · Problemas dimensionales (clip, ramales, pvc fuera de tolerancia)' },
+  'SC-18': { sev: 'C', cita: 'C · Exceso de corbata en clip' },
+  'SE-22': { sev: 'B', cita: 'B · Falta de componentes (clip faltante, encintado, candados secundarios faltantes)' },
+  'TC-11': { sev: 'C', cita: 'C · PVC, corrugado, tubo de calor, mal cortado (sesgado)' },
+  'TC-16': { sev: 'C', cita: 'C · PVC, corrugado, tubo de calor, mal cortado (sesgado)' },
+  'TE-15': { sev: 'A', cita: 'A · Terminales desalineadas / dobladas' },
+  'TE-28': { sev: 'A', cita: 'A · Terminal no asentada / terminal jalada' },
+  'TE-32': { sev: 'A', cita: 'A · Terminal no asentada / terminal jalada' },
+  'TE-57': { sev: 'A', cita: 'A · Terminales desalineadas / dobladas' },
+  'TP-11': { sev: 'C', cita: 'C · PVC, corrugado, tubo de calor, mal cortado (sesgado)' },
+  'TP-16': { sev: 'C', cita: 'C · PVC, corrugado, tubo de calor, mal cortado (sesgado)' },
+  'TP-24': { sev: 'B', cita: 'B · Problemas dimensionales (clip, ramales, pvc fuera de tolerancia)' },
+  'TR-11': { sev: 'C', cita: 'C · PVC, corrugado, tubo de calor, mal cortado (sesgado)' },
+  'TR-16': { sev: 'C', cita: 'C · PVC, corrugado, tubo de calor, mal cortado (sesgado)' },
+};
+
+// ── Matriz clase-elemento × clase-tipo ─────────────────────────────
+const MATRIZ_SEVERIDAD = {
+  ELEC: { FUNC: 'A', IDENT: 'B', ENS: 'B', COSM: 'C' },
+  IDENT: { FUNC: 'A', IDENT: 'A', ENS: 'B', COSM: 'C' },
+  MEC: { FUNC: 'B', IDENT: 'B', ENS: 'B', COSM: 'C' },
+  PROT: { FUNC: 'C', IDENT: 'C', ENS: 'C', COSM: 'C' },
+  PROC: { FUNC: 'B', IDENT: 'B', ENS: 'B', COSM: 'C' },
+};
+
+const SEVERIDAD_DEFAULT = 'B';
+
+// ── Migración del catálogo legado ──────────────────────────────────
+const LEGADO_DETERMINISTA = {
+  'Terminal no insertada (Push-back)': { el: 'TE', tipo: 32 },
+  'Cables invertidos (Miswire)': { el: 'CA', tipo: 27 },
+  'Circuito abierto / Sin continuidad': { el: 'CN', tipo: 1 },
+  'Cortocircuito': { el: 'CN', tipo: 12 },
+  'Terminal dañada / Deformada': { el: 'TE', tipo: 56 },
+};
+
+const LEGADO_AMBIGUO = {
+  'Daño en aislamiento / Cobre expuesto': 'Dos modos distintos: AI-56 (aislante dañado) vs HI-19 (hilos expuestos)',
+  'Falta de componente (Clip, Sello, TPA)': 'La etiqueta nombra tres elementos candidatos: CO/CR/CC, SE y CPA',
+  'Conector dañado / Roto': 'Tipo determinado (36) pero elemento no: CP, CI o CL',
+  'Ruteo incorrecto / Longitud': 'AR-70 (mal ruteado) vs DI-24 (fuera de tolerancia)',
+  'Encintado defectuoso / Faltante': 'EN-61 (incompleto) vs EN-22 (faltante)',
+};
+
+// ── defect-code.js ──────────────────────────────────────────
+
+/**
+ * Motor de codificación de defectos TIS-F0124.
+ *
+ * Lógica pura: sin DOM, sin Firebase, sin efectos secundarios.
+ * El catálogo (elementos, tipos, anclajes) se genera del documento
+ * controlado — ver src/tis-f0124.js y tools/gen-catalog.py.
+ */
+
+
+
+// Código reservado para registros migrados cuya etiqueta original no
+// determina una única entrada del catálogo. NO es un código del documento.
+const SIN_CLASIFICAR = 'SIN-CLASIFICAR';
+
+const ELEM_POR_CODE = new Map(ELEMENTOS.map(e => [e.code, e]));
+const TIPO_POR_NUM = new Map(TIPOS.map(t => [t.num, t]));
+
+/** Orden de gravedad, de mayor a menor. */
+const ORDEN_SEVERIDAD = ['A', 'B', 'C'];
+
+// ── LOOKUP ────────────────────────────────────────────────────────────────
+
+function getElemento(code) {
+  return ELEM_POR_CODE.get(code) || null;
+}
+
+function getTipo(num) {
+  return TIPO_POR_NUM.get(Number(num)) || null;
+}
+
+/**
+ * ¿El par existe en el catálogo? Un código inventado nunca debe persistirse.
+ */
+function esCodigoValido(el, tipo) {
+  return ELEM_POR_CODE.has(el) && TIPO_POR_NUM.has(Number(tipo));
+}
+
+// ── FORMATO ───────────────────────────────────────────────────────────────
+
+/**
+ * Código corto, el que se lee en piso y se filtra en Excel. Ej. 'TE-36'.
+ */
+function formatCodigo(el, tipo) {
+  return `${el}-${tipo}`;
+}
+
+/**
+ * Descripción legible. Ej. 'TE-36 · Terminal / Roto'.
+ */
+function describirCodigo(el, tipo) {
+  const e = getElemento(el);
+  const t = getTipo(tipo);
+  if (!e || !t) return formatCodigo(el, tipo);
+  return `${formatCodigo(el, tipo)} · ${e.nombre} / ${t.nombre}`;
+}
+
+/**
+ * Parsea 'TE-36' → { el:'TE', tipo:36 }. Devuelve null si no es válido.
+ * Tolera minúsculas y espacios porque también se usa al importar JSON.
+ */
+function parseCodigo(str) {
+  const m = /^\s*([A-Za-z]{2,3})\s*-\s*(\d{1,2})\s*$/.exec(String(str || ''));
+  if (!m) return null;
+  const el = m[1].toUpperCase();
+  const tipo = Number(m[2]);
+  return esCodigoValido(el, tipo) ? { el, tipo } : null;
+}
+
+// ── SEVERIDAD ─────────────────────────────────────────────────────────────
+
+/**
+ * Resuelve la severidad de un par elemento/tipo y —esto es lo importante
+ * para auditoría— DE DÓNDE salió.
+ *
+ * Precedencia:
+ *   1. 'doc'     anclaje textual de la hoja SEVERIDAD del documento
+ *   2. 'matriz'  clase de elemento × clase de tipo
+ *   3. 'default' red de seguridad, nunca debería alcanzarse
+ *
+ * Los tipos de clase DISP (disposición de material, error de prueba) no
+ * son no-conformidades del producto: no llevan severidad.
+ *
+ * @returns {{sev: string|null, fuente: string, cita: string}}
+ */
+function resolverSeveridad(el, tipo) {
+  const e = getElemento(el);
+  const t = getTipo(tipo);
+
+  if (!e || !t) {
+    return { sev: null, fuente: 'invalido', cita: 'Código fuera de catálogo' };
+  }
+
+  if (t.clase === 'DISP') {
+    return {
+      sev: null,
+      fuente: 'disposicion',
+      cita: 'Razón de disposición de material o error de prueba — no es una '
+          + 'no-conformidad del producto',
+    };
+  }
+
+  const anclaje = ANCLAJES_DOC[formatCodigo(el, tipo)];
+  if (anclaje) {
+    return { sev: anclaje.sev, fuente: 'doc', cita: anclaje.cita };
+  }
+
+  const fila = MATRIZ_SEVERIDAD[e.clase];
+  const sev = fila && fila[t.clase];
+  if (sev) {
+    return {
+      sev,
+      fuente: 'matriz',
+      cita: `Elemento ${e.clase} × tipo ${t.clase}`,
+    };
+  }
+
+  return {
+    sev: SEVERIDAD_DEFAULT,
+    fuente: 'default',
+    cita: 'Sin regla aplicable — se asume el caso conservador',
+  };
+}
+
+/** Atajo cuando sólo interesa la letra. */
+function severidadDe(el, tipo) {
+  return resolverSeveridad(el, tipo).sev;
+}
+
+/**
+ * ¿Es una disposición de material en vez de un defecto del producto?
+ * Se usa para excluirla de los KPI y del Pareto de defectos.
+ */
+function esDisposicion(tipo) {
+  const t = getTipo(tipo);
+  return !!t && t.clase === 'DISP';
+}
+
+// ── CONSTRUCCIÓN DE DEFECTOS ──────────────────────────────────────────────
+
+/**
+ * Construye el objeto que se persiste por cada defecto capturado.
+ *
+ * `sevManual` sólo se guarda cuando el inspector cambió la severidad
+ * sugerida: así el registro conserva tanto lo que el sistema propuso como
+ * la decisión humana que lo sobrescribió.
+ */
+function crearDefecto(el, tipo, sevManual = null) {
+  if (!esCodigoValido(el, tipo)) return null;
+  const n = Number(tipo);
+  const r = resolverSeveridad(el, n);
+  const d = {
+    el,
+    tipo: n,
+    codigo: formatCodigo(el, n),
+    sevAuto: r.sev,
+    sevFuente: r.fuente,
+    sevCita: r.cita,
+    sev: r.sev,
+  };
+  if (sevManual && sevManual !== r.sev && ORDEN_SEVERIDAD.includes(sevManual)) {
+    d.sev = sevManual;
+    d.sevManual = sevManual;
+  }
+  return d;
+}
+
+/**
+ * Marcador para registros migrados que no se pudieron codificar sin inventar
+ * datos. Conserva el texto original íntegro.
+ */
+function crearSinClasificar(textoOriginal, motivo) {
+  return {
+    el: SIN_CLASIFICAR,
+    tipo: null,
+    codigo: SIN_CLASIFICAR,
+    sev: null,
+    sevAuto: null,
+    sevFuente: 'sin-clasificar',
+    sevCita: motivo || 'Requiere reclasificación por el inspector',
+    textoOriginal: textoOriginal || '',
+  };
+}
+
+function esSinClasificar(d) {
+  return !!d && d.el === SIN_CLASIFICAR;
+}
+
+// ── AGREGACIÓN ────────────────────────────────────────────────────────────
+
+/**
+ * Severidad de un conjunto de defectos = la peor presente.
+ * Devuelve null si no hay ninguna severidad asignable.
+ */
+function severidadMaxima(defectos) {
+  let peor = null;
+  (defectos || []).forEach(d => {
+    if (!d || !d.sev) return;
+    if (peor === null || ORDEN_SEVERIDAD.indexOf(d.sev) < ORDEN_SEVERIDAD.indexOf(peor)) {
+      peor = d.sev;
+    }
+  });
+  return peor;
+}
+
+/**
+ * Cadena legible de todos los defectos de un bloque, la que alimenta el
+ * campo `fail` que ya consumen el historial, el estatus y el Excel.
+ */
+function defectosAString(defectos, otro = '') {
+  const partes = (defectos || []).map(d => {
+    if (esSinClasificar(d)) {
+      return d.textoOriginal
+        ? `${SIN_CLASIFICAR}: ${d.textoOriginal}`
+        : SIN_CLASIFICAR;
+    }
+    return describirCodigo(d.el, d.tipo);
+  });
+  const ov = String(otro || '').trim();
+  if (ov) partes.push(`Otro: ${ov}`);
+  return partes.length ? partes.join(' | ') : 'N/A';
+}
+
+/**
+ * Conteo para Pareto. Separa lo que NO debe contaminar el KPI de defectos:
+ * disposiciones de material y registros sin clasificar van en su propio cubo.
+ *
+ * @returns {{defectos: object, disposiciones: object, sinClasificar: number,
+ *            porSeveridad: object, totalDefectos: number}}
+ */
+function contarDefectos(listas) {
+  const defectos = {};
+  const disposiciones = {};
+  const porSeveridad = { A: 0, B: 0, C: 0 };
+  let sinClasificar = 0;
+  let totalDefectos = 0;
+
+  (listas || []).forEach(d => {
+    if (!d) return;
+    if (esSinClasificar(d)) { sinClasificar++; return; }
+    const etiqueta = describirCodigo(d.el, d.tipo);
+    if (esDisposicion(d.tipo)) {
+      disposiciones[etiqueta] = (disposiciones[etiqueta] || 0) + 1;
+      return;
+    }
+    defectos[etiqueta] = (defectos[etiqueta] || 0) + 1;
+    totalDefectos++;
+    if (d.sev && porSeveridad[d.sev] !== undefined) porSeveridad[d.sev]++;
+  });
+
+  return { defectos, disposiciones, sinClasificar, porSeveridad, totalDefectos };
+}
+
+// ── MIGRACIÓN DEL CATÁLOGO LEGADO ─────────────────────────────────────────
+
+/**
+ * Traduce una etiqueta de falla del catálogo viejo.
+ *
+ * Sólo auto-mapea cuando la etiqueta determina elemento Y tipo a una única
+ * entrada. Todo lo demás devuelve un marcador SIN-CLASIFICAR con el texto
+ * original: una migración no inventa datos que el registro nunca contuvo.
+ */
+function migrarFallaLegado(etiqueta) {
+  const clave = String(etiqueta || '').trim();
+  if (!clave) return null;
+
+  const det = LEGADO_DETERMINISTA[clave];
+  if (det) return crearDefecto(det.el, det.tipo);
+
+  const motivo = LEGADO_AMBIGUO[clave];
+  if (motivo) return crearSinClasificar(clave, motivo);
+
+  // Texto libre ("Otro: …") o etiqueta desconocida.
+  return crearSinClasificar(clave, 'Etiqueta fuera del catálogo legado');
+}
+
+/**
+ * Migra la cadena `fail` completa de un registro histórico.
+ * Acepta los separadores que usó la app: ' | ' entre partes y ', ' dentro.
+ */
+function migrarCadenaFallas(fail) {
+  const s = String(fail || '').trim();
+  if (!s || s.toLowerCase() === 'n/a') return [];
+  return s
+    .split(/\s*\|\s*/)
+    .flatMap(seg => (/^Otro:/i.test(seg) ? [seg] : seg.split(/\s*,\s*/)))
+    .map(x => x.trim())
+    .filter(Boolean)
+    .map(migrarFallaLegado)
+    .filter(Boolean);
+}
+
+// ── MIGRACIÓN DE REGISTROS HISTÓRICOS ────────────────────────────────────
+
+/**
+ * Codifica un registro creado antes de TIS-F0124.
+ *
+ * Es idempotente: un registro ya codificado se devuelve intacto, de modo que
+ * puede correr en cada arranque de la app sin degradar los datos.
+ *
+ * No reescribe `fail`: el texto original del registro se conserva tal cual
+ * quedó capturado. Los códigos se AGREGAN. Un registro migrado nunca se
+ * confunde con uno capturado bajo el catálogo vigente, porque lleva
+ * `catalogo: 'legado'` y, si hubo ambigüedad, `requiereReclasificacion`.
+ */
+function migrarRegistro(record) {
+  if (!record || Array.isArray(record.defectCodes)) return record;
+
+  const partes = (record.parts && record.parts.length)
+    ? record.parts
+    : [{ partnum: record.partnum || '', fail: record.fail }];
+
+  const migratedParts = partes.map(p => ({
+    ...p,
+    defectCodes: Array.isArray(p.defectCodes)
+      ? p.defectCodes
+      : migrarCadenaFallas(p.fail),
+  }));
+
+  const allCodes = migratedParts.flatMap(p => p.defectCodes);
+
+  return {
+    ...record,
+    parts: (record.parts && record.parts.length) ? migratedParts : record.parts,
+    defectCodes: allCodes,
+    severidad: severidadMaxima(allCodes),
+    requiereReclasificacion: allCodes.some(esSinClasificar),
+    catalogo: 'legado',
+  };
+}
+
+/** Aplica la migración a una colección completa. */
+function migrarRegistros(records) {
+  return (records || []).map(migrarRegistro);
+}
+
+// ── BÚSQUEDA (alimenta el selector del formulario) ────────────────────────
+
+function fold(s) {
+  return String(s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function buscarElementos(q) {
+  const f = fold(q).trim();
+  if (!f) return ELEMENTOS;
+  return ELEMENTOS.filter(e => e.buscar.includes(f));
+}
+
+function buscarTipos(q) {
+  const f = fold(q).trim();
+  if (!f) return TIPOS;
+  return TIPOS.filter(t => t.buscar.includes(f));
+}
+// >>> TIS-F0124 FIN AUTOGENERADO
 
 // ── TIPOS DE DEFECTO (segmentado) ──
 const DEFECT_TYPES = {
@@ -1572,7 +2227,6 @@ let partBlocks = [];
 let records = [];
 let _chartStatus = null;
 let _chartDefects = null;
-let selectedFailures = {};
 let selectedDefects = {}; // { subDefect: true }
 
 // ── INIT ──
@@ -1591,10 +2245,8 @@ function makeEmptyBlock() {
   COMPONENTS.forEach(c => { comp[c] = { yes: false, no: false, subtypes: [] }; });
   const test = {};
   TESTS.forEach(t => { test[t] = false; });
-  const fail = {};
-  [...FAILURES, 'Otro'].forEach(f => { fail[f] = false; });
   const defect = {};
-  return { partnum: '', compState: comp, testState: test, failState: fail, defectState: defect, otherFail: '', solution: '' };
+  return { partnum: '', compState: comp, testState: test, defectCodes: [], defectState: defect, otherFail: '', solution: '' };
 }
 
 function addPartBlock() {
@@ -1641,11 +2293,15 @@ function renderAllBlocks() {
         <div style="margin-top:14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:10px;">Pruebas Realizadas</div>
         <div class="test-checks" id="test-list-${idx}"></div>
 
-        <div style="margin-top:18px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:10px;">Fallas Detectadas</div>
-        <div class="test-checks" id="fail-list-${idx}"></div>
-        <div class="field" id="other-fail-wrap-${idx}" style="display:${block.failState && block.failState['Otro'] ? 'block':'none'};margin-top:10px;">
-          <label>Especificar Otra Falla</label>
-          <textarea id="other-fail-${idx}" placeholder="Describe la falla especial..." oninput="partBlocks[${idx}].otherFail=this.value">${block.otherFail||''}</textarea>
+        <div style="margin-top:18px;display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px;">
+          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);">Defectos Detectados</span>
+          <span style="font-size:10px;color:var(--muted);font-family:var(--font-mono,monospace);">${TIS_F0124_SELLO}</span>
+        </div>
+        <div id="defcode-list-${idx}"></div>
+        <button type="button" onclick="abrirSelectorDefecto(${idx})" style="margin-top:8px;width:100%;background:var(--surface);border:1px dashed var(--accent2);color:var(--accent2);border-radius:var(--radius);padding:11px;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;">+ Agregar defecto</button>
+        <div class="field" style="margin-top:10px;">
+          <label>Defecto fuera del catálogo (opcional)</label>
+          <textarea id="other-fail-${idx}" placeholder="Sólo si el defecto no existe en TIS-F0124. Solicita su alta al documento." oninput="partBlocks[${idx}].otherFail=this.value">${block.otherFail||''}</textarea>
         </div>
 
         <div style="margin-top:18px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:10px;">Tipo de Defecto</div>
@@ -1660,31 +2316,173 @@ function renderAllBlocks() {
     container.appendChild(wrap);
     renderBlockComponents(idx);
     renderBlockTests(idx);
-    renderBlockFails(idx);
+    renderBlockDefectCodes(idx);
     renderBlockDefects(idx);
   });
 }
 
-function renderBlockFails(idx) {
-  const el = document.getElementById('fail-list-' + idx);
+// ── DEFECTOS CODIFICADOS TIS-F0124 ──
+
+const SEV_COLOR = { A:'#dc2626', B:'#d97706', C:'#2563eb' };
+
+/** Badge de severidad. `fuente` explica de dónde salió, para auditoría. */
+function sevBadge(d, onclick) {
+  if (!d.sev) {
+    const txt = esSinClasificar(d) ? 'SIN CLASIF.' : 'N/A';
+    return '<span title="' + _esc(d.sevCita || '') + '" style="background:#e5e7eb;color:#4b5563;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:800;letter-spacing:0.5px;">' + txt + '</span>';
+  }
+  const manual = d.sevManual ? ' ✎' : '';
+  const tip = (d.sevManual
+    ? 'Ajustada por el inspector (el sistema sugirió ' + d.sevAuto + '). '
+    : '') + (d.sevCita || '');
+  return '<span ' + (onclick ? 'onclick="' + onclick + '" style="cursor:pointer;' : 'style="') +
+    'background:' + SEV_COLOR[d.sev] + ';color:#fff;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:800;letter-spacing:0.5px;" title="' +
+    _esc(tip) + '">' + d.sev + manual + '</span>';
+}
+
+function _esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+/** Una fila de defecto ya capturado. */
+function defectRowHTML(d, sevClick, delClick) {
+  const desc = esSinClasificar(d)
+    ? 'SIN CLASIFICAR' + (d.textoOriginal ? ' — ' + d.textoOriginal : '')
+    : describirCodigo(d.el, d.tipo);
+  const disp = !esSinClasificar(d) && esDisposicion(d.tipo);
+  return '<div style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-left:4px solid ' +
+    (d.sev ? SEV_COLOR[d.sev] : '#9ca3af') + ';border-radius:var(--radius);padding:9px 11px;margin-bottom:7px;">' +
+    sevBadge(d, sevClick) +
+    '<span style="flex:1;font-size:13px;line-height:1.35;">' + _esc(desc) +
+    (disp ? '<br><span style="font-size:10px;color:var(--muted);font-weight:700;">DISPOSICIÓN DE MATERIAL — no cuenta como defecto</span>' : '') +
+    '</span>' +
+    '<button type="button" onclick="' + delClick + '" style="background:none;border:none;color:var(--red);font-size:17px;font-weight:700;cursor:pointer;padding:0 4px;line-height:1;">✕</button>' +
+    '</div>';
+}
+
+function renderBlockDefectCodes(idx) {
+  const el = document.getElementById('defcode-list-' + idx);
   if (!el) return;
-  el.innerHTML = '';
   const block = partBlocks[idx];
-  if (!block.failState) { block.failState = {}; [...FAILURES,'Otro'].forEach(f=>block.failState[f]=false); }
-  [...FAILURES, 'Otro'].forEach(f => {
-    const item = document.createElement('div');
-    item.className = 'check-item ' + (block.failState[f] ? 'active' : '');
-    item.onclick = () => {
-      block.failState[f] = !block.failState[f];
-      if (f === 'Otro') {
-        const w = document.getElementById('other-fail-wrap-' + idx);
-        if (w) w.style.display = block.failState[f] ? 'block' : 'none';
-      }
-      renderBlockFails(idx);
-    };
-    item.innerHTML = '<div class="check-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><span class="check-label" style="font-size:13px;">' + f + '</span>';
-    el.appendChild(item);
-  });
+  if (!Array.isArray(block.defectCodes)) block.defectCodes = [];
+  if (!block.defectCodes.length) {
+    el.innerHTML = '<div style="font-size:12.5px;color:var(--muted);padding:8px 2px;">Sin defectos — la pieza pasa.</div>';
+    return;
+  }
+  el.innerHTML = block.defectCodes.map((d, i) =>
+    defectRowHTML(d, 'ciclarSeveridad(' + idx + ',' + i + ')', 'quitarDefecto(' + idx + ',' + i + ')')
+  ).join('');
+}
+
+function quitarDefecto(idx, i) {
+  partBlocks[idx].defectCodes.splice(i, 1);
+  renderBlockDefectCodes(idx);
+}
+
+/**
+ * Ciclo A→B→C→(sugerida) para corregir la severidad propuesta.
+ * Al volver a la sugerida se borra `sevManual`: el registro no debe
+ * afirmar que hubo una decisión humana donde no la hubo.
+ */
+function ciclarSeveridad(idx, i) {
+  const d = partBlocks[idx].defectCodes[i];
+  if (!d || !d.sevAuto) return;
+  const orden = ['A','B','C'];
+  const next = orden[(orden.indexOf(d.sev) + 1) % orden.length];
+  if (next === d.sevAuto) { d.sev = d.sevAuto; delete d.sevManual; }
+  else { d.sev = next; d.sevManual = next; }
+  renderBlockDefectCodes(idx);
+}
+
+// ── SELECTOR DE DEFECTO (elemento × tipo) ──
+// Destino del selector: {tipo:'block', idx} | {tipo:'edit'} | {tipo:'papoi'}
+let _selDestino = null;
+let _selEl = null;
+let _selTipo = null;
+
+function abrirSelectorDefecto(idx) { _abrirSelector({ tipo:'block', idx: idx }); }
+
+function _abrirSelector(destino) {
+  _selDestino = destino;
+  _selEl = null;
+  _selTipo = null;
+  document.getElementById('defsel-sello').textContent = TIS_F0124_SELLO;
+  const q = document.getElementById('defsel-q');
+  q.value = '';
+  document.getElementById('defsel-overlay').style.display = 'flex';
+  filtrarSelector();
+  setTimeout(() => q.focus(), 60);
+}
+
+function cerrarSelectorDefecto() {
+  document.getElementById('defsel-overlay').style.display = 'none';
+  _selDestino = null;
+}
+
+function _filaSelector(activo, izq, der, onclick) {
+  return '<div onclick="' + onclick + '" style="padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;gap:9px;align-items:baseline;' +
+    (activo ? 'background:rgba(37,99,235,0.12);' : '') + '">' +
+    '<span style="font-family:var(--font-mono,monospace);font-weight:800;font-size:12.5px;color:var(--accent2);min-width:34px;">' + _esc(izq) + '</span>' +
+    '<span style="font-size:13px;line-height:1.3;">' + _esc(der) + '</span></div>';
+}
+
+function filtrarSelector() {
+  const q = document.getElementById('defsel-q').value;
+  document.getElementById('defsel-elems').innerHTML =
+    buscarElementos(q).map(e =>
+      _filaSelector(_selEl === e.code, e.code, e.nombre, "elegirElemento('" + e.code + "')")
+    ).join('') || '<div style="padding:14px;font-size:13px;color:var(--muted);">Sin coincidencias</div>';
+
+  document.getElementById('defsel-tipos').innerHTML =
+    buscarTipos(q).map(t =>
+      _filaSelector(_selTipo === t.num, t.num, t.nombre, 'elegirTipo(' + t.num + ')')
+    ).join('') || '<div style="padding:14px;font-size:13px;color:var(--muted);">Sin coincidencias</div>';
+
+  _actualizarPreview();
+}
+
+function elegirElemento(code) { _selEl = code; filtrarSelector(); }
+function elegirTipo(num) { _selTipo = num; filtrarSelector(); }
+
+function _actualizarPreview() {
+  const box = document.getElementById('defsel-preview');
+  const ok = document.getElementById('defsel-ok');
+  if (!_selEl || !_selTipo) {
+    const falta = !_selEl && !_selTipo ? 'un elemento y un tipo'
+      : (!_selEl ? 'un elemento' : 'un tipo de defecto');
+    box.innerHTML = '<span style="color:var(--muted);">Selecciona ' + falta + '.</span>';
+    ok.disabled = true; ok.style.opacity = '0.45';
+    return;
+  }
+  const d = crearDefecto(_selEl, _selTipo);
+  const disp = esDisposicion(_selTipo);
+  box.innerHTML = '<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;">' +
+    sevBadge(d, null) +
+    '<strong style="font-family:var(--font-mono,monospace);">' + _esc(d.codigo) + '</strong>' +
+    '<span>' + _esc(describirCodigo(_selEl, _selTipo).split(' · ')[1] || '') + '</span></div>' +
+    '<div style="font-size:11px;color:var(--muted);margin-top:4px;">' +
+    (disp ? 'Disposición de material — no cuenta como defecto en los indicadores.'
+          : 'Severidad sugerida por ' + (d.sevFuente === 'doc' ? 'criterio del documento' : 'matriz de clasificación') + '. Puedes ajustarla después.') +
+    '</div>';
+  ok.disabled = false; ok.style.opacity = '1';
+}
+
+function confirmarSelectorDefecto() {
+  if (!_selEl || !_selTipo || !_selDestino) return;
+  const d = crearDefecto(_selEl, _selTipo);
+  if (!d) return;
+  const dest = _selDestino;
+  if (dest.tipo === 'block') {
+    partBlocks[dest.idx].defectCodes.push(d);
+    cerrarSelectorDefecto();
+    renderBlockDefectCodes(dest.idx);
+  } else if (dest.tipo === 'edit') {
+    _emDefectCodes.push(d);
+    cerrarSelectorDefecto();
+    renderEmDefectCodes();
+  }
 }
 
 function renderBlockDefects(idx) {
@@ -1802,29 +2600,6 @@ function toggleSubtype(idx, name, val) {
   renderBlockComponents(idx);
 }
 
-function renderFailures() {
-  const el = document.getElementById('failure-list');
-  if (!el) return;
-  el.innerHTML = '';
-  [...FAILURES, 'Otro'].forEach(f => {
-    const item = document.createElement('div');
-    item.className = `check-item ${selectedFailures[f] ? 'active' : ''}`;
-    item.onclick = () => {
-      selectedFailures[f] = !selectedFailures[f];
-      if (f === 'Otro') {
-        document.getElementById('other-failure-container').style.display = selectedFailures[f] ? 'block' : 'none';
-      }
-      renderFailures();
-  renderDefects();
-    };
-    item.innerHTML = `
-      <div class="check-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
-      <span class="check-label" style="font-size: 13px;">${f}</span>
-    `;
-    el.appendChild(item);
-  });
-}
-
 // ── RENDER DEFECT TYPES ──
 function renderDefects() {
   const cont = document.getElementById('defect-type-container');
@@ -1911,20 +2686,10 @@ function submitForm() {
     }
   }
 
-  // Helper to compute fail string for a block
-  function blockFailStr(b) {
-    const fs = b.failState || {};
-    let f = Object.keys(fs).filter(k => fs[k] && k !== 'Otro').join(', ');
-    if (fs['Otro']) {
-      const ov = (b.otherFail||'').trim();
-      f += (f ? ', ' : '') + (ov ? 'Otro: ' + ov : 'Otro');
-    }
-    return f || 'N/A';
-  }
-
   // Build per-part data including fail/defect/solution
   const partsData = validBlocks.map(b => {
-    const bFail = blockFailStr(b);
+    const codes = JSON.parse(JSON.stringify(b.defectCodes || []));
+    const bFail = defectosAString(codes, b.otherFail);
     const bd = getDefectBreakdown(b.defectState);
     return {
       partnum: b.partnum,
@@ -1932,6 +2697,8 @@ function submitForm() {
       tests: JSON.parse(JSON.stringify(b.testState)),
       fail: bFail,
       solution: (b.solution||'').trim(),
+      defectCodes: codes,
+      severidad: severidadMaxima(codes),
       defects: JSON.parse(JSON.stringify(b.defectState||{})),
       defectDetection: bd.detection,
       defectOperator: bd.operator
@@ -1948,6 +2715,17 @@ function submitForm() {
   const combinedDefects = {};
   partsData.forEach(p => { Object.keys(p.defects).forEach(k => { if(p.defects[k]) combinedDefects[k] = true; }); });
 
+  // Defectos codificados de todas las partes, deduplicados por código+severidad
+  const allCodes = [];
+  const _seenCodes = new Set();
+  partsData.forEach(p => (p.defectCodes||[]).forEach(d => {
+    if (!d) return;
+    const k = esSinClasificar(d) ? 'SC:' + (d.textoOriginal||'') : d.codigo + '|' + d.sev;
+    if (_seenCodes.has(k)) return;
+    _seenCodes.add(k);
+    allCodes.push(d);
+  }));
+
   const isSolved = (fail !== 'N/A' && allSolutions.length >= allFails.length && allFails.length > 0);
 
   const record = {
@@ -1957,6 +2735,10 @@ function submitForm() {
     defects: combinedDefects,
     defectDetection: allDet,
     defectOperator: allOp,
+    defectCodes: allCodes,
+    severidad: severidadMaxima(allCodes),
+    requiereReclasificacion: allCodes.some(esSinClasificar),
+    catalogo: TIS_F0124_SELLO,
     partnum: validBlocks.map(b => b.partnum).join(' / '),
     parts: partsData,
     ts: new Date().toISOString(),
@@ -1999,7 +2781,7 @@ function loadRecords() {
   // Cargar desde localStorage mientras llega Firebase
   try {
     const raw = localStorage.getItem('tester_records');
-    if (raw) records = JSON.parse(raw);
+    if (raw) records = migrarRegistros(JSON.parse(raw));
   } catch(e) { records = []; }
 }
 
@@ -2008,7 +2790,7 @@ window.startFirebaseSync = function() {
   if (!window._firebaseReady) return;
   const q = window._query(window._collection(window._db_ref, window._COL), window._orderBy('ts', 'desc'));
   window._onSnapshot(q, (snapshot) => {
-    records = snapshot.docs.map(d => ({ ...d.data(), _firebaseId: d.id }));
+    records = migrarRegistros(snapshot.docs.map(d => ({ ...d.data(), _firebaseId: d.id })));
     try { localStorage.setItem('tester_records', JSON.stringify(records)); } catch(e) {}
     renderHistory();
     if (typeof updatePendingBadge === 'function') updatePendingBadge();
@@ -2394,7 +3176,22 @@ function exportExcel() {
         var solVal   = (rec.solution && rec.solution.toLowerCase()!=='n/a') ? rec.solution : '—';
         var detStr2  = (rec.defectDetection && rec.defectDetection.length) ? rec.defectDetection.join(' · ') : '—';
         var opStr2   = (rec.defectOperator  && rec.defectOperator.length)  ? rec.defectOperator.join(' · ')  : '—';
+        // El checklist es el documento que se firma: lleva el código y la
+        // severidad, no sólo la descripción.
+        var _clc = (p.defectCodes && p.defectCodes.length) ? p.defectCodes
+                 : ((rec.defectCodes && rec.defectCodes.length) ? rec.defectCodes : []);
+        var codeVal = _clc.length
+          ? _clc.map(function(d){
+              return esSinClasificar(d)
+                ? 'SIN CLASIFICAR — '+(d.textoOriginal||'')
+                : d.codigo+'  ·  '+describirCodigo(d.el,d.tipo).split(' · ')[1]
+                  +(d.sev?'  [Sev '+d.sev+']':'  [disposición]');
+            }).join('\n')
+          : '—';
+        var sevVal = _clc.length ? (severidadMaxima(_clc)||'No aplica (disposición)') : '—';
         var resultRows = [
+          ['CÓDIGO TIS-F0124', codeVal],
+          ['SEVERIDAD',       sevVal],
           ['FALLA DETECTADA', failVal],
           ['SOLUCIÓN',        solVal],
           ['DEFECTO TESTER',  detStr2],
@@ -2474,7 +3271,8 @@ function exportExcel() {
   // ════════════════════════════════════════════════════════
   {
     const HDRS = ['#','FECHA','HORA','CELL','SLOT','INSPECTOR','CLIENTE',
-      'PART NUMBER','COMPONENTES','PRUEBAS','FALLA','DEF. TESTER','DEF. OPERADOR','ESTATUS','SOLUCIÓN'];
+      'PART NUMBER','COMPONENTES','PRUEBAS','CÓDIGO TIS-F0124','SEV','DETALLE DEL DEFECTO',
+      'DEF. TESTER','DEF. OPERADOR','ESTATUS','SOLUCIÓN'];
     const aoa = [];
     aoa.push(['TELAMON  ·  REGISTROS DE INSPECCIÓN  |  '+today,...Array(HDRS.length-1).fill('')]);
     aoa.push(['REG-QC-TLM-001  ·  Rev. A  ·  Total: '+records.length+' registros  ·  Made by: Arturo Rebolledo Avelino',...Array(HDRS.length-1).fill('')]);
@@ -2495,18 +3293,33 @@ function exportExcel() {
         var testLines = TESTS.filter(function(t){return ts2[t];}).map(function(t){return '✓ '+t;}).join('\n')||'—';
         var detStr = (r.defectDetection&&r.defectDetection.length) ? r.defectDetection.join('\n') : '—';
         var opStr  = (r.defectOperator &&r.defectOperator.length)  ? r.defectOperator.join('\n')  : '—';
+        // Códigos y severidad en columnas propias: así se filtra y se hace
+        // tabla dinámica por código, que es el punto de codificar.
+        var pc = (p.defectCodes && p.defectCodes.length) ? p.defectCodes
+               : ((r.defectCodes && r.defectCodes.length) ? r.defectCodes : []);
+        var codeStr = pc.length ? pc.map(function(d){return d.codigo;}).join('\n') : '—';
+        var sevStr  = pc.length ? (severidadMaxima(pc)||'—') : '—';
+        var descStr = pc.length
+          ? pc.map(function(d){
+              return esSinClasificar(d)
+                ? 'SIN CLASIFICAR — '+(d.textoOriginal||'')
+                : describirCodigo(d.el,d.tipo).split(' · ')[1]
+                  + (esDisposicion(d.tipo) ? '  [DISPOSICIÓN]' : '')
+                  + (d.sevManual ? '  [SEV ajustada por inspector, sugerida '+d.sevAuto+']' : '');
+            }).join('\n')
+          : (r.fail||'N/A');
         aoa.push([
           '#'+String(idx+1).padStart(3,'0'), dateStr, timeStr,
           r.cell||'', r.slot||'', r.inspector||'', r.client||'',
           p.partnum||'', compLines, testLines,
-          r.fail||'N/A', detStr, opStr, status, r.solution||'N/A',
+          codeStr, sevStr, descStr, detStr, opStr, status, r.solution||'N/A',
         ]);
       });
     });
 
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     ws['!cols'] = [{wch:6},{wch:11},{wch:7},{wch:10},{wch:5},{wch:12},{wch:10},
-      {wch:18},{wch:36},{wch:34},{wch:34},{wch:30},{wch:30},{wch:13},{wch:34}];
+      {wch:18},{wch:36},{wch:34},{wch:15},{wch:6},{wch:40},{wch:30},{wch:30},{wch:13},{wch:34}];
     ws['!merges'] = [mergeRow(0,0,HDRS.length-1), mergeRow(1,0,HDRS.length-1)];
     if(ws['A1']) ws['A1'].s=stTitle();
     if(ws['A2']) ws['A2'].s=stSub();
@@ -2516,11 +3329,17 @@ function exportExcel() {
     });
     for(var ri=3; ri<aoa.length; ri++){
       var alt=ri%2===0; var rbg=alt?C.grayPale:C.white;
-      var rowStatus=aoa[ri][13];
+      var rowStatus=aoa[ri][15];
+      var rowSev=aoa[ri][11];
+      var SEVX={A:{fg:C.red,bg:C.redLt},B:{fg:C.amber,bg:C.amberLt},C:{fg:C.blue,bg:C.blueLt||C.grayPale}};
       HDRS.forEach(function(_,ci){
         var ref=XLSX.utils.encode_cell({r:ri,c:ci});
         if(!ws[ref]) return;
-        if(ci===13)      ws[ref].s=stBadge(rowStatus);
+        if(ci===15)      ws[ref].s=stBadge(rowStatus);
+        else if(ci===11) ws[ref].s=SEVX[rowSev]
+                           ? stCtr(SEVX[rowSev].fg,SEVX[rowSev].bg)
+                           : st('111827',rbg,{sz:9,halign:'center',wrap:false});
+        else if(ci===10) ws[ref].s=st(C.navy,rbg,{sz:9,bold:true,halign:'center',wrap:true});
         else if(ci===0)  ws[ref].s=st(C.gray,rbg,{sz:9,halign:'center',wrap:false});
         else if(ci<=3)   ws[ref].s=st('111827',rbg,{sz:9,halign:'center',wrap:false});
         else             ws[ref].s=st('111827',rbg,{sz:9,wrap:true});
@@ -2689,6 +3508,96 @@ function exportExcel() {
   }
 
   // ════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════
+  // HOJA 6: TIS-F0124  (Pareto por código y severidad)
+  // ════════════════════════════════════════════════════════
+  {
+    // Un defecto por parte inspeccionada, no por registro: un registro con
+    // 3 partes que fallaron cuenta 3 veces.
+    var _todos=[];
+    records.forEach(function(r){
+      var ps=(r.parts&&r.parts.length)?r.parts:[r];
+      ps.forEach(function(pt){ (pt.defectCodes||[]).forEach(function(d){ if(d) _todos.push(d); }); });
+    });
+    var cnt=contarDefectos(_todos);
+
+    const aoa=[];
+    aoa.push(['TELAMON  ·  ANÁLISIS DE DEFECTOS CODIFICADOS  |  '+TIS_F0124_SELLO,'','','']);
+    aoa.push(['Total defectos: '+cnt.totalDefectos+'  ·  Exportado: '+today+'  ·  Made by: Arturo Rebolledo Avelino','','','']);
+    aoa.push(['']);
+    aoa.push(['Las disposiciones de material y los registros sin clasificar se reportan aparte:','','','']);
+    aoa.push(['no son no-conformidades del producto y contaminarían el indicador de defectos.','','','']);
+    aoa.push(['']);
+
+    var sevHdr=aoa.length;
+    aoa.push(['SEVERIDAD','DEFECTOS','% DEL TOTAL','CRITERIO']);
+    var totalSev=cnt.totalDefectos||1;
+    ['A','B','C'].forEach(function(k){
+      aoa.push([k,cnt.porSeveridad[k],(cnt.porSeveridad[k]/totalSev*100).toFixed(1)+'%',
+        String(SEVERIDADES[k]||'').split('\n')[0]]);
+    });
+    aoa.push(['']);
+
+    var parHdr=aoa.length;
+    aoa.push(['CÓDIGO / DEFECTO','OCURRENCIAS','% DEL TOTAL','% ACUMULADO']);
+    var pares=Object.entries(cnt.defectos).sort(function(a,b){return b[1]-a[1];});
+    if(!pares.length) aoa.push(['Sin defectos codificados','—','—','—']);
+    var acum=0;
+    pares.forEach(function(e){
+      acum+=e[1];
+      aoa.push([e[0],e[1],(e[1]/totalSev*100).toFixed(1)+'%',(acum/totalSev*100).toFixed(1)+'%']);
+    });
+    aoa.push(['']);
+
+    var dispHdr=aoa.length;
+    aoa.push(['DISPOSICIÓN DE MATERIAL  (fuera del indicador de defectos)','OCURRENCIAS','','']);
+    var disps=Object.entries(cnt.disposiciones).sort(function(a,b){return b[1]-a[1];});
+    if(!disps.length) aoa.push(['Ninguna registrada','—','','']);
+    disps.forEach(function(e){aoa.push([e[0],e[1],'','']);});
+    aoa.push(['']);
+
+    var scHdr=aoa.length;
+    aoa.push(['PENDIENTE DE RECLASIFICAR','CANTIDAD','','']);
+    aoa.push(['Defectos migrados del catálogo anterior sin código único',cnt.sinClasificar,'','']);
+
+    const ws=XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols']=[{wch:62},{wch:14},{wch:14},{wch:52}];
+    ws['!merges']=[mergeRow(0,0,3),mergeRow(1,0,3),mergeRow(3,0,3),mergeRow(4,0,3)];
+    if(ws['A1']) ws['A1'].s=stTitle();
+    if(ws['A2']) ws['A2'].s=stSub();
+    ['A4','A5'].forEach(function(r){if(ws[r])ws[r].s=st(C.gray,C.white,{sz:9,italic:true,halign:'left'});});
+
+    var SEVX3={A:{fg:C.red,bg:C.redLt},B:{fg:C.amber,bg:C.amberLt},C:{fg:C.blue,bg:C.blueLt}};
+    ['A','B','C','D'].forEach(function(c){var ref=c+(sevHdr+1);if(ws[ref])ws[ref].s=stHdr(C.navyMd);});
+    ['A','B','C'].forEach(function(k,i){
+      var r2=sevHdr+2+i;
+      if(ws['A'+r2]) ws['A'+r2].s=stCtr(SEVX3[k].fg,SEVX3[k].bg);
+      if(ws['B'+r2]) ws['B'+r2].s=stCtr(C.navy,C.white);
+      if(ws['C'+r2]) ws['C'+r2].s=stCtr(C.navy,C.white);
+      if(ws['D'+r2]) ws['D'+r2].s=st(C.gray,C.white,{sz:9,wrap:true});
+    });
+
+    ['A','B','C','D'].forEach(function(c){var ref=c+(parHdr+1);if(ws[ref])ws[ref].s=stHdr(C.red);});
+    for(var pi=parHdr+1;pi<dispHdr-1;pi++){
+      var pr=pi+1; var pbg=pi%2===0?C.redPale:C.white;
+      if(ws['A'+pr]) ws['A'+pr].s=st(C.navy,pbg,{sz:9,wrap:true});
+      ['B','C','D'].forEach(function(c){if(ws[c+pr])ws[c+pr].s=stCtr(C.red,pbg);});
+    }
+
+    ['A','B'].forEach(function(c){var ref=c+(dispHdr+1);if(ws[ref])ws[ref].s=stHdr(C.gray);});
+    for(var di=dispHdr+1;di<scHdr-1;di++){
+      var dr=di+1; var dbg=di%2===0?C.grayPale:C.white;
+      if(ws['A'+dr]) ws['A'+dr].s=st(C.gray,dbg,{sz:9,wrap:true});
+      if(ws['B'+dr]) ws['B'+dr].s=stCtr(C.gray,dbg);
+    }
+
+    ['A','B'].forEach(function(c){var ref=c+(scHdr+1);if(ws[ref])ws[ref].s=stHdr(C.amber);});
+    if(ws['A'+(scHdr+2)]) ws['A'+(scHdr+2)].s=st(C.navy,C.amberLt,{sz:9,wrap:true});
+    if(ws['B'+(scHdr+2)]) ws['B'+(scHdr+2)].s=stCtr(C.amber,C.amberLt);
+
+    XLSX.utils.book_append_sheet(wb, ws, 'TIS-F0124');
+  }
+
   // HOJA 6: GRAFICAS  (2D column charts — injected via OOXML/JSZip)
   // ════════════════════════════════════════════════════════
   {
@@ -2725,7 +3634,7 @@ function exportExcel() {
   {
     const aoa=[];
     aoa.push(['TELAMON  ·  CATÁLOGOS DE REFERENCIA  |  WIRE HARNESS','','','']);
-    aoa.push(['Rev. A  ·  '+today,'','','']);
+    aoa.push([TIS_F0124_SELLO+'  ·  Exportado: '+today,'','','']);
     aoa.push(['']);
     aoa.push(['COMPONENTES','SUBTIPOS','# SUB','']);
     var compEntries=Object.entries(COMPONENTS_DICT);
@@ -2748,21 +3657,36 @@ function exportExcel() {
     TESTS_INFO.forEach(function(e){aoa.push([e[0],e[1],'','']);});
     aoa.push(['']);
 
-    const FAIL_CATS=[
-      ['Terminal no insertada (Push-back)','Ensamble Terminal'],
-      ['Cables invertidos (Miswire)','Ruteo'],
-      ['Circuito abierto / Sin continuidad','Eléctrica'],
-      ['Cortocircuito','Eléctrica'],
-      ['Falta de componente (Clip, Sello, TPA)','Componente Faltante'],
-      ['Daño en aislamiento / Cobre expuesto','Daño Físico'],
-      ['Conector dañado / Roto','Daño Físico'],
-      ['Ruteo incorrecto / Longitud','Ruteo'],
-      ['Encintado defectuoso / Faltante','Encintado'],
-      ['Terminal dañada / Deformada','Daño Físico'],
-    ];
-    var failHdrRow2=aoa.length;
-    aoa.push(['TIPO DE FALLA','CATEGORÍA','','']);
-    FAIL_CATS.forEach(function(e){aoa.push([e[0],e[1],'','']);});
+    // ── Catálogo vigente TIS-F0124 ──
+    var CLASE_EL={ELEC:'Eléctrico / Retención',IDENT:'Identificación',
+      MEC:'Ensamble mecánico',PROT:'Protección / Acabado',PROC:'Equipo de proceso'};
+    var CLASE_TP={FUNC:'Funcional',IDENT:'Identificación',ENS:'Ensamble',
+      COSM:'Cosmético',DISP:'Disposición (no es defecto)'};
+
+    var sevHdrRow=aoa.length;
+    aoa.push(['SEVERIDAD','CRITERIO ('+TIS_F0124_SELLO+')','','']);
+    var sevRows=Object.keys(SEVERIDADES);
+    sevRows.forEach(function(k){aoa.push([k,SEVERIDADES[k],'','']);});
+    aoa.push(['']);
+
+    var elemHdrRow=aoa.length;
+    aoa.push(['ELEMENTO (TIS-F0124)','CÓDIGO','CLASIFICACIÓN','']);
+    ELEMENTOS.forEach(function(e){aoa.push([e.nombre,e.code,CLASE_EL[e.clase]||e.clase,'']);});
+    aoa.push(['']);
+
+    var tipoHdrRow=aoa.length;
+    aoa.push(['TIPO DE DEFECTO (TIS-F0124)','N°','CLASIFICACIÓN','']);
+    TIPOS.forEach(function(t){aoa.push([t.nombre,t.num,CLASE_TP[t.clase]||t.clase,'']);});
+    aoa.push(['']);
+
+    var legHdrRow=aoa.length;
+    aoa.push(['CATÁLOGO ANTERIOR (sólo lectura del historial)','EQUIVALENCIA TIS-F0124','','']);
+    FALLAS_LEGADO.forEach(function(f){
+      var d=migrarFallaLegado(f);
+      aoa.push([f, esSinClasificar(d)
+        ? 'SIN CLASIFICAR — '+(LEGADO_AMBIGUO[f]||'')
+        : d.codigo+'  ·  '+describirCodigo(d.el,d.tipo).split(' · ')[1]+'  (Sev '+d.sev+')','','']);
+    });
 
     const ws=XLSX.utils.aoa_to_sheet(aoa);
     ws['!cols']=[{wch:36},{wch:60},{wch:8},{wch:4}];
@@ -2785,13 +3709,37 @@ function exportExcel() {
       if(ws['A'+tr3]) ws['A'+tr3].s=st(C.navy,tbg3,{sz:10,wrap:false});
       if(ws['B'+tr3]) ws['B'+tr3].s=st(C.teal,tbg3,{sz:9,halign:'center',wrap:false});
     }
-    // Failures
-    ['A','B'].forEach(function(c){var ref=c+(failHdrRow2+1);if(ws[ref])ws[ref].s=stHdr(C.red);});
-    for(var fi3=0;fi3<FAIL_CATS.length;fi3++){
-      var fr3=failHdrRow2+2+fi3; var fbg3=fi3%2===0?C.redPale:C.white;
-      if(ws['A'+fr3]) ws['A'+fr3].s=st(C.navy,fbg3,{sz:10,wrap:false});
-      if(ws['B'+fr3]) ws['B'+fr3].s=st(C.red,fbg3,{sz:9,halign:'center',wrap:false});
-    }
+    // TIS-F0124 · severidad
+    ['A','B','C'].forEach(function(c){var ref=c+(sevHdrRow+1);if(ws[ref])ws[ref].s=stHdr(C.red);});
+    var SEVX2={A:{fg:C.red,bg:C.redLt},B:{fg:C.amber,bg:C.amberLt},C:{fg:C.blue,bg:C.blueLt}};
+    sevRows.forEach(function(k,i){
+      var r2=sevHdrRow+2+i;
+      if(ws['A'+r2]) ws['A'+r2].s=stCtr(SEVX2[k]?SEVX2[k].fg:C.navy, SEVX2[k]?SEVX2[k].bg:C.grayPale);
+      if(ws['B'+r2]) ws['B'+r2].s=st(C.gray,C.white,{sz:9,wrap:true});
+    });
+    // TIS-F0124 · elementos
+    ['A','B','C'].forEach(function(c){var ref=c+(elemHdrRow+1);if(ws[ref])ws[ref].s=stHdr(C.navyMd);});
+    ELEMENTOS.forEach(function(e,i){
+      var r2=elemHdrRow+2+i; var bg=i%2===0?C.grayPale:C.white;
+      if(ws['A'+r2]) ws['A'+r2].s=st(C.navy,bg,{sz:10,wrap:false});
+      if(ws['B'+r2]) ws['B'+r2].s=stCtr(C.blue,C.blueLt);
+      if(ws['C'+r2]) ws['C'+r2].s=st(C.gray,bg,{sz:9,halign:'center',wrap:false});
+    });
+    // TIS-F0124 · tipos
+    ['A','B','C'].forEach(function(c){var ref=c+(tipoHdrRow+1);if(ws[ref])ws[ref].s=stHdr(C.navyMd);});
+    TIPOS.forEach(function(t,i){
+      var r2=tipoHdrRow+2+i; var bg=i%2===0?C.grayPale:C.white;
+      if(ws['A'+r2]) ws['A'+r2].s=st(C.navy,bg,{sz:10,wrap:false});
+      if(ws['B'+r2]) ws['B'+r2].s=stCtr(C.blue,C.blueLt);
+      if(ws['C'+r2]) ws['C'+r2].s=st(C.gray,bg,{sz:9,halign:'center',wrap:false});
+    });
+    // Catálogo anterior
+    ['A','B'].forEach(function(c){var ref=c+(legHdrRow+1);if(ws[ref])ws[ref].s=stHdr(C.gray);});
+    FALLAS_LEGADO.forEach(function(_,i){
+      var r2=legHdrRow+2+i; var bg=i%2===0?C.grayPale:C.white;
+      if(ws['A'+r2]) ws['A'+r2].s=st(C.gray,bg,{sz:9,wrap:true});
+      if(ws['B'+r2]) ws['B'+r2].s=st(C.navy,bg,{sz:9,wrap:true});
+    });
     XLSX.utils.book_append_sheet(wb, ws, 'CATÁLOGOS');
   }
 
@@ -2841,7 +3789,7 @@ function importRecords() {
         if (!Array.isArray(imported)) throw new Error();
         const existingIds = new Set(records.map(r => r.id));
         const nuevos = imported.filter(r => !existingIds.has(r.id));
-        records = [...nuevos, ...records];
+        records = [...migrarRegistros(nuevos), ...records];
         records.sort((a,b) => b.id - a.id);
         saveRecords();
         renderHistory();
@@ -2877,6 +3825,15 @@ function renderHistory() {
 
   // TESTERS ÚNICOS
   const testers = new Set(records.map(r => r.tester)).size;
+
+  // SEVERIDAD TIS-F0124 — cuenta registros por su severidad más alta.
+  // Un registro solucionado sigue contando: corregirlo no borra que ocurrió.
+  const sevCount = { A:0, B:0, C:0 };
+  let pendReclas = 0;
+  records.forEach(r => {
+    if (r.severidad && sevCount[r.severidad] !== undefined) sevCount[r.severidad]++;
+    if (r.requiereReclasificacion) pendReclas++;
+  });
 
   // TOTAL PART NUMBERS
   const totalPN = totalPartNumbers;
@@ -2916,6 +3873,26 @@ function renderHistory() {
       </div>
       <div class="stat-label">Part Number</div>
     </div>
+
+    <div class="stat-box" title="Severidad A — falla funcional eléctrica o de identificación">
+      <div class="stat-num" style="color:${SEV_COLOR.A}">${sevCount.A}</div>
+      <div class="stat-label">Sev A</div>
+    </div>
+
+    <div class="stat-box" title="Severidad B — problemas de ensamble">
+      <div class="stat-num" style="color:${SEV_COLOR.B}">${sevCount.B}</div>
+      <div class="stat-label">Sev B</div>
+    </div>
+
+    <div class="stat-box" title="Severidad C — encintado y estéticos">
+      <div class="stat-num" style="color:${SEV_COLOR.C}">${sevCount.C}</div>
+      <div class="stat-label">Sev C</div>
+    </div>
+
+    ${pendReclas ? `<div class="stat-box" title="Registros migrados del catálogo anterior que requieren asignación de código">
+      <div class="stat-num" style="color:#92400e">${pendReclas}</div>
+      <div class="stat-label">Reclasificar</div>
+    </div>` : ''}
   `;
 
   const el = document.getElementById('history-list');
@@ -2941,6 +3918,14 @@ function renderHistory() {
       statusPill = `<span class="status-pill pill-ok">PASS</span>`;
     }
 
+    // Severidad TIS-F0124 del registro = la peor de sus defectos.
+    if (r.severidad) {
+      statusPill += `<span class="status-pill" title="Severidad TIS-F0124 (la más alta del registro)" style="background:${SEV_COLOR[r.severidad]};color:#fff;">SEV ${r.severidad}</span>`;
+    }
+    if (r.requiereReclasificacion) {
+      statusPill += `<span class="status-pill" title="Registro migrado del catálogo anterior: su descripción no determina un código único. Ábrelo y asigna el código correcto." style="background:#fef3c7;color:#92400e;">RECLASIFICAR</span>`;
+    }
+
     // Support both new (parts[]) and legacy (components/tests) format
     const _partsArr = r.parts || [{partnum: r.partnum, components: r.components, tests: r.tests, fail: r.fail, solution: r.solution}];
     const partsHtml = _partsArr.map(p => {
@@ -2958,6 +3943,22 @@ function renderHistory() {
       // Fall back to record-level fail/solution when part-level is missing (older records)
       const pFail = p.fail || (_partsArr.length === 1 ? r.fail : '') || '—';
       const pSol = p.solution || (_partsArr.length === 1 ? r.solution : '') || '—';
+      // Defectos codificados: se muestran con su badge de severidad. Sólo se
+      // cae al texto plano `Falla:` cuando el registro no tiene códigos.
+      const _pc = Array.isArray(p.defectCodes) ? p.defectCodes : [];
+      const pCodes = _pc.length ? (
+        '<div style="margin-bottom:6px;">' +
+        '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--red);margin-bottom:5px;">Defectos TIS-F0124</div>' +
+        _pc.map(d => {
+          const desc = esSinClasificar(d)
+            ? 'SIN CLASIFICAR' + (d.textoOriginal ? ' — ' + d.textoOriginal : '')
+            : describirCodigo(d.el, d.tipo);
+          const disp = !esSinClasificar(d) && esDisposicion(d.tipo);
+          return '<div style="display:flex;gap:8px;align-items:baseline;font-size:11.5px;margin-bottom:3px;">' +
+            sevBadge(d, null) + '<span>' + _esc(desc) +
+            (disp ? ' <em style="color:var(--muted);">(disposición)</em>' : '') + '</span></div>';
+        }).join('') + '</div>'
+      ) : '';
       const pDet = (p.defectDetection && p.defectDetection.length>0) ? p.defectDetection.join(', ') : '';
       const pOp  = (p.defectOperator && p.defectOperator.length>0) ? p.defectOperator.join(', ') : '';
       return `
@@ -2965,7 +3966,8 @@ function renderHistory() {
           <div style="font-size:12px;font-weight:700;color:var(--accent2);font-family:var(--mono);margin-bottom:8px;">${p.partnum}</div>
           <div class="comp-summary" style="margin-bottom:8px;">${compTags||'<span class="comp-tag">Sin selección</span>'}</div>
           <div style="font-size:11px;color:var(--muted);margin-bottom:8px;"><span style="font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Pruebas:</span> ${activTests}</div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;"><span style="font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--red);">Falla:</span> ${pFail}</div>
+          ${pCodes}
+          ${pCodes ? '' : `<div style="font-size:11px;color:var(--muted);margin-bottom:4px;"><span style="font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--red);">Falla:</span> ${pFail}</div>`}
           ${pDet ? `<div style="font-size:11px;margin-bottom:4px;"><span style="font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#92400e;">⚙️ Detección:</span> ${pDet}</div>` : ''}
           ${pOp ? `<div style="font-size:11px;margin-bottom:4px;"><span style="font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#1e40af;">👤 Operador:</span> ${pOp}</div>` : ''}
           <div style="font-size:11px;color:var(--muted);"><span style="font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--green);">Solución:</span> ${pSol}</div>
@@ -3128,7 +4130,7 @@ function switchTab(tab) {
 let _editIdx = null;
 let _emCompState = {};
 let _emTestState = {};
-let _emFailState = {};
+let _emDefectCodes = [];
 let _emDefectState = {};
 
 function editRecord(idx) {
@@ -3158,7 +4160,10 @@ function editRecord(idx) {
   document.getElementById('edit-modal-title').textContent = '✏️ Editar Registro — ' + (r.parts?r.parts[0].partnum:r.partnum||'');
 
   // ── Restore comp state from first part block ──
-  const srcComp = (r.parts && r.parts[0]) ? r.parts[0].components : (r.components || {});
+  // Un registro anterior puede no traer componentes/pruebas por parte.
+  // El flujo de reclasificación abre justo esos registros, así que no
+  // puede reventar aquí.
+  const srcComp = ((r.parts && r.parts[0] && r.parts[0].components) || r.components || {});
   _emCompState = {};
   COMPONENTS.forEach(c => {
     const s = srcComp[c] || { yes: false, subtypes: [] };
@@ -3166,24 +4171,29 @@ function editRecord(idx) {
   });
 
   // ── Restore test state ──
-  const srcTests = (r.parts && r.parts[0]) ? r.parts[0].tests : (r.tests || {});
+  const srcTests = ((r.parts && r.parts[0] && r.parts[0].tests) || r.tests || {});
   _emTestState = {};
   TESTS.forEach(t => { _emTestState[t] = !!(srcTests && srcTests[t]); });
 
-  // ── Restore fail state ──
-  _emFailState = {};
-  const failStr = r.fail || '';
-  const failParts = failStr.split(',').map(s=>s.trim());
-  FAILURES.forEach(f => { _emFailState[f] = failParts.includes(f); });
-  const otherFail = failParts.find(fp => fp.startsWith('Otro:'));
-  document.getElementById('em-fail-other').value = otherFail ? otherFail.replace('Otro:','').trim() : '';
+  // ── Restore defect codes ──
+  // Un registro anterior a TIS-F0124 se codifica al abrirlo; lo ambiguo
+  // queda marcado SIN-CLASIFICAR para que el inspector lo resuelva aquí.
+  const srcCodes = (r.parts && r.parts[0] && r.parts[0].defectCodes) || r.defectCodes;
+  _emDefectCodes = Array.isArray(srcCodes)
+    ? JSON.parse(JSON.stringify(srcCodes))
+    : migrarCadenaFallas(r.fail);
+  const otherFail = String(r.fail || '').split(/\s*\|\s*/).find(fp => /^Otro:/i.test(fp.trim()));
+  document.getElementById('em-fail-other').value = otherFail ? otherFail.replace(/^Otro:/i,'').trim() : '';
+  // Lo migrado ambiguo ya está representado como SIN-CLASIFICAR; no debe
+  // duplicarse en el campo de texto libre.
+  _emDefectCodes = _emDefectCodes.filter(d => !(esSinClasificar(d) && /^Otro:/i.test(d.textoOriginal || '')));
 
   // Restore defect state
   _emDefectState = r.defects ? JSON.parse(JSON.stringify(r.defects)) : {};
 
   renderEmComp();
   renderEmTests();
-  renderEmFails();
+  renderEmDefectCodes();
   renderEmDefects();
 
   document.getElementById('edit-modal').classList.add('open');
@@ -3251,17 +4261,33 @@ function renderEmTests() {
   });
 }
 
-function renderEmFails() {
+function renderEmDefectCodes() {
   const grid = document.getElementById('em-fail-grid');
-  grid.innerHTML = '';
-  [...FAILURES, 'Otro'].forEach(f => {
-    const chip = document.createElement('span');
-    chip.className = 'edit-fail-chip' + (_emFailState[f] ? ' active' : '');
-    chip.textContent = f;
-    chip.onclick = () => { _emFailState[f] = !_emFailState[f]; renderEmFails(); };
-    grid.appendChild(chip);
-  });
-  document.getElementById('em-fail-other-wrap').style.display = _emFailState['Otro'] ? 'block' : 'none';
+  if (!grid) return;
+  const pend = _emDefectCodes.filter(esSinClasificar).length;
+  grid.innerHTML =
+    (pend ? '<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:var(--radius);padding:9px 11px;margin-bottom:9px;font-size:12.5px;line-height:1.4;">' +
+      '<strong>' + pend + ' defecto' + (pend>1?'s':'') + ' sin clasificar.</strong> ' +
+      'Vienen de un registro anterior a TIS-F0124 cuya descripción no determina un código único. ' +
+      'Quítalo y captura el código correcto.</div>' : '') +
+    (_emDefectCodes.length
+      ? _emDefectCodes.map((d,i) => defectRowHTML(d, 'ciclarSeveridadEm(' + i + ')', 'quitarDefectoEm(' + i + ')')).join('')
+      : '<div style="font-size:12.5px;color:var(--muted);padding:6px 2px;">Sin defectos.</div>') +
+    '<button type="button" onclick="_abrirSelector({tipo:\'edit\'})" style="margin-top:6px;width:100%;background:var(--surface);border:1px dashed var(--accent2);color:var(--accent2);border-radius:var(--radius);padding:10px;font-family:var(--font);font-size:13.5px;font-weight:700;cursor:pointer;">+ Agregar defecto</button>';
+  const w = document.getElementById('em-fail-other-wrap');
+  if (w) w.style.display = 'block';
+}
+
+function quitarDefectoEm(i) { _emDefectCodes.splice(i,1); renderEmDefectCodes(); }
+
+function ciclarSeveridadEm(i) {
+  const d = _emDefectCodes[i];
+  if (!d || !d.sevAuto) return;
+  const orden = ['A','B','C'];
+  const next = orden[(orden.indexOf(d.sev) + 1) % orden.length];
+  if (next === d.sevAuto) { d.sev = d.sevAuto; delete d.sevManual; }
+  else { d.sev = next; d.sevManual = next; }
+  renderEmDefectCodes();
 }
 
 function renderEmDefects() {
@@ -3319,14 +4345,18 @@ function saveEditModal() {
   }
 
   // Falla
-  let fail = FAILURES.filter(f => _emFailState[f]).join(', ');
-  if (_emFailState['Otro']) {
-    const ov = document.getElementById('em-fail-other').value.trim();
-    fail += (fail ? ', ' : '') + (ov ? 'Otro: ' + ov : 'Otro');
-  }
-  if (!fail) fail = 'N/A';
+  const _emOtro = document.getElementById('em-fail-other').value.trim();
+  const fail = defectosAString(_emDefectCodes, _emOtro);
   record.fail = fail;
   record.solved = fail !== 'N/A' && record.solution !== '' && record.solution.toLowerCase() !== 'n/a';
+
+  // ── TIS-F0124 ──
+  const _emCodes = JSON.parse(JSON.stringify(_emDefectCodes));
+  record.defectCodes = _emCodes;
+  record.severidad = severidadMaxima(_emCodes);
+  record.requiereReclasificacion = _emCodes.some(esSinClasificar);
+  // Al editarse bajo el catálogo vigente el registro deja de ser legado.
+  record.catalogo = TIS_F0124_SELLO;
 
   // Admin edited it → clear pending flag (counts as reviewed)
   if (window._isAdmin && record.pendingApproval) { delete record.pendingApproval; }
@@ -3344,6 +4374,8 @@ function saveEditModal() {
       p.tests      = JSON.parse(JSON.stringify(_emTestState));
       p.fail       = fail;
       p.solution   = record.solution;
+      p.defectCodes = JSON.parse(JSON.stringify(_emCodes));
+      p.severidad   = record.severidad;
     });
   }
   record.components = JSON.parse(JSON.stringify(_emCompState));
@@ -3473,11 +4505,8 @@ window.saveEditModal = async function() {
     inspector: document.getElementById('em-inspector').value.trim(),
     solution:  document.getElementById('em-solution').value.trim(),
   };
-  let fail = FAILURES.filter(f => _emFailState[f]).join(', ');
-  if (_emFailState['Otro']) {
-    const ov = document.getElementById('em-fail-other').value.trim();
-    fail += (fail ? ', ' : '') + (ov ? 'Otro: ' + ov : 'Otro');
-  }
+  const _emOtro = document.getElementById('em-fail-other').value.trim();
+  const fail = defectosAString(_emDefectCodes, _emOtro);
   proposed.fail = fail || 'N/A';
   proposed.components = JSON.parse(JSON.stringify(_emCompState));
   proposed.tests = JSON.parse(JSON.stringify(_emTestState));
@@ -3485,10 +4514,14 @@ window.saveEditModal = async function() {
   const _pbd = getDefectBreakdown(_emDefectState);
   proposed.defectDetection = _pbd.detection;
   proposed.defectOperator = _pbd.operator;
+  proposed.defectCodes = JSON.parse(JSON.stringify(_emDefectCodes));
+  proposed.severidad = severidadMaxima(_emDefectCodes);
+  proposed.requiereReclasificacion = _emDefectCodes.some(esSinClasificar);
+  proposed.catalogo = TIS_F0124_SELLO;
 
   // Compute diff for display
   const diff = {};
-  const fields = ['cell','date','slot','tester','client','inspector','solution','fail'];
+  const fields = ['cell','date','slot','tester','client','inspector','solution','fail','severidad'];
   fields.forEach(f => {
     if ((record[f]||'') !== (proposed[f]||'')) diff[f] = { old: record[f]||'', new: proposed[f]||'' };
   });

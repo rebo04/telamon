@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   COMPONENTS,
   TESTS,
-  FAILURES,
+  crearDefecto,
   makeEmptyBlock,
   toggleBlockComp,
   toggleSubtype,
@@ -40,12 +40,12 @@ describe('makeEmptyBlock', () => {
     });
   });
 
-  it('initialises failState for every failure + Otro', () => {
-    const { failState } = makeEmptyBlock();
-    [...FAILURES, 'Otro'].forEach(f => {
-      expect(failState).toHaveProperty(f);
-      expect(failState[f]).toBe(false);
-    });
+  it('initialises defectCodes as an empty array', () => {
+    expect(makeEmptyBlock().defectCodes).toEqual([]);
+  });
+
+  it('no longer carries the legacy failState map', () => {
+    expect(makeEmptyBlock()).not.toHaveProperty('failState');
   });
 
   it('initialises defectState as an empty object', () => {
@@ -175,59 +175,43 @@ describe('toggleSubtype', () => {
 
 describe('blockFailStr', () => {
   function block(overrides = {}) {
-    const b = makeEmptyBlock();
-    return Object.assign(b, overrides);
+    return Object.assign(makeEmptyBlock(), overrides);
   }
 
-  it('returns N/A when no failures are selected', () => {
+  it('returns N/A when no defects are captured', () => {
     expect(blockFailStr(block())).toBe('N/A');
   });
 
-  it('returns the single selected failure name', () => {
-    const b = block();
-    b.failState['Cortocircuito'] = true;
-    expect(blockFailStr(b)).toBe('Cortocircuito');
+  it('describes a single coded defect', () => {
+    const b = block({ defectCodes: [crearDefecto('CN', 12)] });
+    expect(blockFailStr(b)).toBe('CN-12 · Continuidad / Corto');
   });
 
-  it('joins multiple failures with ", "', () => {
-    const b = block();
-    b.failState['Cortocircuito'] = true;
-    b.failState['Terminal no insertada (Push-back)'] = true;
+  it('joins multiple defects with " | "', () => {
+    const b = block({ defectCodes: [crearDefecto('CN', 12), crearDefecto('TE', 32)] });
     const result = blockFailStr(b);
-    expect(result).toContain('Cortocircuito');
-    expect(result).toContain('Terminal no insertada (Push-back)');
-    expect(result).toContain(', ');
+    expect(result).toContain('CN-12');
+    expect(result).toContain('TE-32');
+    expect(result).toContain(' | ');
   });
 
-  it('appends "Otro: <text>" when Otro is checked and otherFail is set', () => {
+  it('appends "Otro: <text>" for defects outside the catalogue', () => {
     const b = block({ otherFail: 'Falla especial XYZ' });
-    b.failState['Otro'] = true;
     expect(blockFailStr(b)).toBe('Otro: Falla especial XYZ');
   });
 
-  it('appends "Otro" without detail when otherFail is empty', () => {
-    const b = block({ otherFail: '' });
-    b.failState['Otro'] = true;
-    expect(blockFailStr(b)).toBe('Otro');
+  it('ignores a blank otherFail', () => {
+    expect(blockFailStr(block({ otherFail: '   ' }))).toBe('N/A');
   });
 
-  it('does not include "Otro" keyword in the regular failure list', () => {
-    const b = block();
-    b.failState['Cortocircuito'] = true;
-    b.failState['Otro'] = false;
-    expect(blockFailStr(b)).not.toContain('Otro');
-  });
-
-  it('combines regular failures + Otro correctly', () => {
-    const b = block({ otherFail: 'Vibracion' });
-    b.failState['Cortocircuito'] = true;
-    b.failState['Otro'] = true;
+  it('combines coded defects with the free-text field', () => {
+    const b = block({ defectCodes: [crearDefecto('CN', 12)], otherFail: 'Vibracion' });
     const result = blockFailStr(b);
-    expect(result).toContain('Cortocircuito');
+    expect(result).toContain('CN-12 · Continuidad / Corto');
     expect(result).toContain('Otro: Vibracion');
   });
 
-  it('handles missing failState gracefully (returns N/A)', () => {
-    expect(blockFailStr({ otherFail: '' })).toBe('N/A');
+  it('tolerates a block with no defectCodes array at all', () => {
+    expect(blockFailStr({})).toBe('N/A');
   });
 });

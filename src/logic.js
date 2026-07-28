@@ -3,6 +3,15 @@
  * No DOM, no Firebase, no side-effects.
  */
 
+import {
+  defectosAString,
+  severidadMaxima,
+  esSinClasificar,
+  TIS_F0124_SELLO,
+} from './defect-code.js';
+
+export * from './defect-code.js';
+
 // ── DATA ──────────────────────────────────────────────────────────────────
 
 export const COMPONENTS_DICT = {
@@ -39,7 +48,12 @@ export const TESTS = [
   'Poka-Yoke',
 ];
 
-export const FAILURES = [
+/**
+ * Catálogo de fallas anterior a TIS-F0124. Ya NO se captura con él: se
+ * conserva únicamente para poder migrar y releer los registros históricos.
+ * No agregar entradas — el catálogo vigente es TIS-F0124.
+ */
+export const FALLAS_LEGADO = [
   'Terminal no insertada (Push-back)',
   'Cables invertidos (Miswire)',
   'Circuito abierto / Sin continuidad',
@@ -91,13 +105,12 @@ export function makeEmptyBlock() {
   COMPONENTS.forEach(c => { comp[c] = { yes: false, no: false, subtypes: [] }; });
   const test = {};
   TESTS.forEach(t => { test[t] = false; });
-  const fail = {};
-  [...FAILURES, 'Otro'].forEach(f => { fail[f] = false; });
   return {
     partnum: '',
     compState: comp,
     testState: test,
-    failState: fail,
+    // Defectos codificados TIS-F0124 — ver src/defect-code.js
+    defectCodes: [],
     defectState: {},
     otherFail: '',
     solution: '',
@@ -149,15 +162,11 @@ export function getDefectBreakdown(defectsObj) {
 
 /**
  * Build the human-readable failure string for a single part block.
+ * Los defectos vienen ya codificados TIS-F0124; `otherFail` cubre lo que
+ * todavía no existe en el catálogo (el documento pide solicitar su alta).
  */
 export function blockFailStr(b) {
-  const fs = b.failState || {};
-  let f = Object.keys(fs).filter(k => fs[k] && k !== 'Otro').join(', ');
-  if (fs['Otro']) {
-    const ov = (b.otherFail || '').trim();
-    f += (f ? ', ' : '') + (ov ? 'Otro: ' + ov : 'Otro');
-  }
-  return f || 'N/A';
+  return defectosAString((b && b.defectCodes) || [], (b && b.otherFail) || '');
 }
 
 // ── FORM VALIDATION ──────────────────────────────────────────────────────
@@ -220,6 +229,21 @@ export function buildRecord(header, partsData, overrides = {}) {
   const allDet = [...new Set(partsData.flatMap(p => p.defectDetection || []))];
   const allOp  = [...new Set(partsData.flatMap(p => p.defectOperator  || []))];
 
+  // Defectos codificados de todas las partes, deduplicados por código.
+  const allCodes = [];
+  const seenCodes = new Set();
+  partsData.forEach(p => {
+    (p.defectCodes || []).forEach(d => {
+      if (!d) return;
+      const k = esSinClasificar(d) ? `SC:${d.textoOriginal || ''}` : `${d.codigo}|${d.sev}`;
+      if (seenCodes.has(k)) return;
+      seenCodes.add(k);
+      allCodes.push(d);
+    });
+  });
+  const severidad = severidadMaxima(allCodes);
+  const requiereReclasificacion = allCodes.some(esSinClasificar);
+
   const combinedDefects = {};
   partsData.forEach(p => {
     Object.keys(p.defects || {}).forEach(k => { if (p.defects[k]) combinedDefects[k] = true; });
@@ -235,6 +259,11 @@ export function buildRecord(header, partsData, overrides = {}) {
     defects: combinedDefects,
     defectDetection: allDet,
     defectOperator: allOp,
+    // ── TIS-F0124 ──
+    defectCodes: allCodes,
+    severidad,
+    requiereReclasificacion,
+    catalogo: TIS_F0124_SELLO,
     partnum: partsData.map(p => p.partnum).join(' / '),
     parts: partsData,
     ts: new Date().toISOString(),
@@ -285,11 +314,23 @@ export function computeHistoryStats(records) {
       !r.solved;
     return acc + ((r.parts ? r.parts.length : 1) * (hasFail ? 1 : 0));
   }, 0);
+  // Severidad del registro = la peor de sus defectos. Un registro ya
+  // solucionado sigue contando para el histórico de severidad: lo que se
+  // corrigió no borra que ocurrió.
+  const severidad = { A: 0, B: 0, C: 0 };
+  let sinClasificar = 0;
+  records.forEach(r => {
+    if (r.severidad && severidad[r.severidad] !== undefined) severidad[r.severidad]++;
+    if (r.requiereReclasificacion) sinClasificar++;
+  });
+
   return {
     total,
     ok: total - withFail,
     fail: withFail,
     testers: new Set(records.map(r => r.tester)).size,
+    severidad,
+    sinClasificar,
   };
 }
 
