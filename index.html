@@ -1093,6 +1093,106 @@ body.role-papoi .papoi-only { display: inline-flex !important; }
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
+/* ── Selector de defecto TIS-F0124 ── */
+.defrow {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(255,255,255,0.72);
+  border: 1px solid var(--border);
+  /* Esquina izquierda cuadrada para que la barra de severidad salga recta:
+     con el borde redondeado se dibujaba como un paréntesis. */
+  border-radius: 0 var(--radius) var(--radius) 0;
+  border-left-width: 5px; border-left-style: solid;
+  padding: 10px 12px; margin-bottom: 7px;
+}
+.defrow .txt { flex: 1; font-size: 13px; line-height: 1.35; }
+.defrow .disp {
+  display: block; font-size: 10px; color: var(--muted);
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px;
+}
+.defrow .quitar {
+  background: none; border: none; color: var(--red);
+  font-size: 17px; font-weight: 700; cursor: pointer; padding: 0 4px; line-height: 1;
+}
+.defsel-overlay {
+  display: none; position: fixed; inset: 0; z-index: 9000;
+  background: rgba(15,23,42,0.55);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  align-items: center; justify-content: center; padding: 14px;
+}
+.defsel-overlay.open { display: flex; }
+.defsel-box {
+  background: rgba(248,250,252,0.97);
+  backdrop-filter: blur(44px) saturate(180%);
+  -webkit-backdrop-filter: blur(44px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.84);
+  border-radius: 26px;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.28), inset 0 1px 0 var(--glass-hi);
+  width: 100%; max-width: 880px; max-height: 92vh;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.defsel-head {
+  background: rgba(30,41,59,0.95); color: #fff;
+  padding: 15px 20px; display: flex; align-items: center;
+  justify-content: space-between; gap: 12px;
+}
+.defsel-head h3 { margin: 0; font-size: 15px; font-weight: 700; color: #fff; }
+.defsel-head .sello { font-family: var(--mono); font-size: 10.5px; color: #94a3b8; margin-top: 2px; }
+.defsel-x {
+  background: none; border: none; color: #94a3b8;
+  font-size: 22px; cursor: pointer; padding: 0 2px; line-height: 1;
+}
+.defsel-find { padding: 10px 12px; background: #fff; border-bottom: 1px solid #e5e7eb; }
+.defsel-find input {
+  width: 100%; background: #fff; border: 1.5px solid #cbd5e1;
+  border-radius: 10px; color: var(--text-dark);
+  font-family: var(--font); font-size: 14.5px; padding: 10px 12px; outline: none;
+}
+.defsel-find input:focus { border-color: var(--accent2); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+.defsel-preview {
+  padding: 13px 20px; background: #f8fafc; border-top: 1px solid #e5e7eb;
+  font-size: 13.5px; min-height: 62px;
+}
+.defsel-preview .linea { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.defsel-preview .cod { font-family: var(--mono); font-weight: 700; font-size: 14px; }
+.defsel-preview .nota { font-size: 11.5px; color: var(--muted); margin-top: 5px; }
+.defsel-preview .falta { color: var(--muted); }
+.defsel-cols { display: flex; flex: 1; min-height: 0; background: #fff; }
+.defsel-col { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.defsel-col + .defsel-col { border-left: 1px solid #e5e7eb; }
+.defsel-col h4 {
+  margin: 0; padding: 9px 14px; background: #f1f5f9; color: var(--muted);
+  font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.defsel-list { overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; background: #fff; }
+.defsel-row {
+  padding: 11px 14px; border-bottom: 1px solid #f1f5f9; cursor: pointer;
+  display: flex; gap: 10px; align-items: baseline;
+}
+.defsel-row:active { background: #eff6ff; }
+.defsel-row.sel { background: #dbeafe; box-shadow: inset 3px 0 0 var(--accent2); }
+.defsel-row .cod {
+  font-family: var(--mono); font-weight: 700; font-size: 12.5px;
+  color: var(--accent2); min-width: 38px; flex-shrink: 0;
+}
+.defsel-row .nom { font-size: 13.5px; line-height: 1.35; color: var(--text-dark); }
+.defsel-empty { padding: 16px 14px; font-size: 13px; color: var(--muted); }
+.defsel-foot {
+  padding: 13px 20px; background: rgba(248,250,252,0.95);
+  border-top: 1px solid #e5e7eb; display: flex; gap: 10px; justify-content: flex-end;
+}
+.defsel-foot button {
+  border-radius: var(--radius); padding: 11px 22px;
+  font-family: var(--font); font-size: 14px; font-weight: 700; cursor: pointer;
+}
+.defsel-cancel { background: #fff; border: 1px solid #cbd5e1; color: var(--text-dark); }
+.defsel-ok { background: var(--accent2); border: none; color: #fff; font-weight: 800; }
+.defsel-ok:disabled { opacity: 0.45; cursor: not-allowed; }
+@media (max-width: 700px) {
+  .defsel-cols { flex-direction: column; }
+  .defsel-col + .defsel-col { border-left: none; border-top: 1px solid #e5e7eb; }
+  .defsel-col { min-height: 190px; }
+}
 .edit-modal-box {
   background: rgba(248,250,252,0.82);
   backdrop-filter: blur(44px) saturate(180%);
@@ -1486,37 +1586,40 @@ body.role-papoi .papoi-only { display: inline-flex !important; }
 </div>
 
 <!-- Selector de defecto TIS-F0124: elemento (71) × tipo (72) -->
-<div id="defsel-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.55);z-index:9000;align-items:center;justify-content:center;padding:14px;">
-  <div style="background:var(--bg,#fff);border-radius:14px;width:100%;max-width:860px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.3);">
-    <div style="padding:15px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;">
+<div id="defsel-overlay" class="defsel-overlay">
+  <div class="defsel-box">
+    <div class="defsel-head">
       <div>
-        <div style="font-size:15px;font-weight:800;">Codificar defecto</div>
-        <div style="font-size:11px;color:var(--muted);" id="defsel-sello"></div>
+        <h3>Codificar defecto</h3>
+        <div class="sello" id="defsel-sello"></div>
       </div>
-      <button type="button" onclick="cerrarSelectorDefecto()" style="background:none;border:none;font-size:24px;line-height:1;color:var(--muted);cursor:pointer;padding:0 4px;">✕</button>
+      <button type="button" class="defsel-x" onclick="cerrarSelectorDefecto()">&#10005;</button>
     </div>
 
-    <div style="padding:12px 18px;border-bottom:1px solid var(--border);">
-      <input id="defsel-q" type="text" placeholder="Buscar por código o nombre — ej. &quot;terminal&quot;, &quot;TE&quot;, &quot;roto&quot;, &quot;36&quot;"
-        oninput="filtrarSelector()" autocomplete="off"
-        style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-dark);font-family:var(--font);font-size:15px;padding:11px 13px;outline:none;">
-      <div id="defsel-preview" style="margin-top:10px;font-size:13px;min-height:22px;"></div>
+    <div class="defsel-cols">
+      <div class="defsel-col">
+        <h4>1 &middot; Elemento</h4>
+        <div class="defsel-find">
+          <input id="defsel-qe" type="text" autocomplete="off"
+            placeholder="Buscar elemento &mdash; terminal, TE&hellip;" oninput="filtrarSelector()">
+        </div>
+        <div class="defsel-list" id="defsel-elems"></div>
+      </div>
+      <div class="defsel-col">
+        <h4>2 &middot; Tipo de defecto</h4>
+        <div class="defsel-find">
+          <input id="defsel-qt" type="text" autocomplete="off"
+            placeholder="Buscar tipo &mdash; roto, 36&hellip;" oninput="filtrarSelector()">
+        </div>
+        <div class="defsel-list" id="defsel-tipos"></div>
+      </div>
     </div>
 
-    <div style="display:flex;gap:0;flex:1;min-height:0;">
-      <div style="flex:1;display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--border);">
-        <div style="padding:9px 14px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);background:var(--surface);">1 · Elemento</div>
-        <div id="defsel-elems" style="overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;"></div>
-      </div>
-      <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
-        <div style="padding:9px 14px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);background:var(--surface);">2 · Tipo de defecto</div>
-        <div id="defsel-tipos" style="overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;"></div>
-      </div>
-    </div>
+    <div class="defsel-preview" id="defsel-preview"></div>
 
-    <div style="padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">
-      <button type="button" onclick="cerrarSelectorDefecto()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 18px;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;">Cancelar</button>
-      <button type="button" id="defsel-ok" onclick="confirmarSelectorDefecto()" disabled style="background:var(--accent2);border:none;border-radius:var(--radius);color:#fff;padding:10px 22px;font-family:var(--font);font-size:14px;font-weight:800;cursor:pointer;opacity:0.45;">Agregar</button>
+    <div class="defsel-foot">
+      <button type="button" class="defsel-cancel" onclick="cerrarSelectorDefecto()">Cancelar</button>
+      <button type="button" class="defsel-ok" id="defsel-ok" disabled onclick="confirmarSelectorDefecto()">Agregar</button>
     </div>
   </div>
 </div>
@@ -2295,7 +2398,7 @@ function renderAllBlocks() {
 
         <div style="margin-top:18px;display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px;">
           <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);">Defectos Detectados</span>
-          <span style="font-size:10px;color:var(--muted);font-family:var(--font-mono,monospace);">${TIS_F0124_SELLO}</span>
+          <span style="font-size:10px;color:var(--muted);font-family:var(--mono);">${TIS_F0124_SELLO}</span>
         </div>
         <div id="defcode-list-${idx}"></div>
         <button type="button" onclick="abrirSelectorDefecto(${idx})" style="margin-top:8px;width:100%;background:var(--surface);border:1px dashed var(--accent2);color:var(--accent2);border-radius:var(--radius);padding:11px;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;">+ Agregar defecto</button>
@@ -2352,13 +2455,13 @@ function defectRowHTML(d, sevClick, delClick) {
     ? 'SIN CLASIFICAR' + (d.textoOriginal ? ' — ' + d.textoOriginal : '')
     : describirCodigo(d.el, d.tipo);
   const disp = !esSinClasificar(d) && esDisposicion(d.tipo);
-  return '<div style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-left:4px solid ' +
-    (d.sev ? SEV_COLOR[d.sev] : '#9ca3af') + ';border-radius:var(--radius);padding:9px 11px;margin-bottom:7px;">' +
+  const barra = 'border-left-color:' + (d.sev ? SEV_COLOR[d.sev] : '#9ca3af') + ';';
+  return '<div class="defrow" style="' + barra + '">' +
     sevBadge(d, sevClick) +
-    '<span style="flex:1;font-size:13px;line-height:1.35;">' + _esc(desc) +
-    (disp ? '<br><span style="font-size:10px;color:var(--muted);font-weight:700;">DISPOSICIÓN DE MATERIAL — no cuenta como defecto</span>' : '') +
+    '<span class="txt">' + _esc(desc) +
+    (disp ? '<span class="disp">Disposición de material — no cuenta como defecto</span>' : '') +
     '</span>' +
-    '<button type="button" onclick="' + delClick + '" style="background:none;border:none;color:var(--red);font-size:17px;font-weight:700;cursor:pointer;padding:0 4px;line-height:1;">✕</button>' +
+    '<button type="button" class="quitar" onclick="' + delClick + '">&#10005;</button>' +
     '</div>';
 }
 
@@ -2409,36 +2512,49 @@ function _abrirSelector(destino) {
   _selEl = null;
   _selTipo = null;
   document.getElementById('defsel-sello').textContent = TIS_F0124_SELLO;
-  const q = document.getElementById('defsel-q');
-  q.value = '';
-  document.getElementById('defsel-overlay').style.display = 'flex';
+  const qe = document.getElementById('defsel-qe');
+  const qt = document.getElementById('defsel-qt');
+  qe.value = ''; qt.value = '';
+  document.getElementById('defsel-overlay').classList.add('open');
   filtrarSelector();
-  setTimeout(() => q.focus(), 60);
+  setTimeout(() => qe.focus(), 60);
 }
 
 function cerrarSelectorDefecto() {
-  document.getElementById('defsel-overlay').style.display = 'none';
+  document.getElementById('defsel-overlay').classList.remove('open');
   _selDestino = null;
 }
 
 function _filaSelector(activo, izq, der, onclick) {
-  return '<div onclick="' + onclick + '" style="padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;gap:9px;align-items:baseline;' +
-    (activo ? 'background:rgba(37,99,235,0.12);' : '') + '">' +
-    '<span style="font-family:var(--font-mono,monospace);font-weight:800;font-size:12.5px;color:var(--accent2);min-width:34px;">' + _esc(izq) + '</span>' +
-    '<span style="font-size:13px;line-height:1.3;">' + _esc(der) + '</span></div>';
+  return '<div class="defsel-row' + (activo ? ' sel' : '') + '" onclick="' + onclick + '">' +
+    '<span class="cod">' + _esc(izq) + '</span>' +
+    '<span class="nom">' + _esc(der) + '</span></div>';
 }
 
+/**
+ * Cada columna tiene su propia búsqueda: son dos ejes independientes.
+ * Con un solo buscador, escribir "terminal" vaciaba la lista de tipos —
+ * ningún tipo de defecto contiene esa palabra.
+ */
 function filtrarSelector() {
-  const q = document.getElementById('defsel-q').value;
-  document.getElementById('defsel-elems').innerHTML =
-    buscarElementos(q).map(e =>
-      _filaSelector(_selEl === e.code, e.code, e.nombre, "elegirElemento('" + e.code + "')")
-    ).join('') || '<div style="padding:14px;font-size:13px;color:var(--muted);">Sin coincidencias</div>';
+  const listaEl = document.getElementById('defsel-elems');
+  const listaTp = document.getElementById('defsel-tipos');
 
-  document.getElementById('defsel-tipos').innerHTML =
-    buscarTipos(q).map(t =>
+  listaEl.innerHTML =
+    buscarElementos(document.getElementById('defsel-qe').value).map(e =>
+      _filaSelector(_selEl === e.code, e.code, e.nombre, "elegirElemento('" + e.code + "')")
+    ).join('') || '<div class="defsel-empty">Sin coincidencias</div>';
+
+  listaTp.innerHTML =
+    buscarTipos(document.getElementById('defsel-qt').value).map(t =>
       _filaSelector(_selTipo === t.num, t.num, t.nombre, 'elegirTipo(' + t.num + ')')
-    ).join('') || '<div style="padding:14px;font-size:13px;color:var(--muted);">Sin coincidencias</div>';
+    ).join('') || '<div class="defsel-empty">Sin coincidencias</div>';
+
+  // Traer lo ya elegido a la vista: en 71 y 72 filas se pierde de vista.
+  [listaEl, listaTp].forEach(l => {
+    const sel = l.querySelector('.defsel-row.sel');
+    if (sel) l.scrollTop = sel.offsetTop - l.clientHeight / 2 + sel.offsetHeight / 2;
+  });
 
   _actualizarPreview();
 }
@@ -2449,24 +2565,29 @@ function elegirTipo(num) { _selTipo = num; filtrarSelector(); }
 function _actualizarPreview() {
   const box = document.getElementById('defsel-preview');
   const ok = document.getElementById('defsel-ok');
+  // Aunque falte un eje, se muestra lo ya elegido: en listas de 71 y 72
+  // filas el inspector necesita ver su selección sin buscarla otra vez.
   if (!_selEl || !_selTipo) {
-    const falta = !_selEl && !_selTipo ? 'un elemento y un tipo'
-      : (!_selEl ? 'un elemento' : 'un tipo de defecto');
-    box.innerHTML = '<span style="color:var(--muted);">Selecciona ' + falta + '.</span>';
-    ok.disabled = true; ok.style.opacity = '0.45';
+    const e = _selEl ? getElemento(_selEl) : null;
+    const t = _selTipo ? getTipo(_selTipo) : null;
+    const elegido = e ? '<strong>' + _esc(e.code) + '</strong> ' + _esc(e.nombre)
+                  : (t ? '<strong>' + t.num + '</strong> ' + _esc(t.nombre) : '');
+    box.innerHTML = '<div class="falta">' +
+      (elegido ? elegido + ' &mdash; falta ' + (e ? 'el tipo de defecto' : 'el elemento') + '.'
+               : 'Selecciona un elemento y un tipo de defecto.') + '</div>';
+    ok.disabled = true;
     return;
   }
   const d = crearDefecto(_selEl, _selTipo);
   const disp = esDisposicion(_selTipo);
-  box.innerHTML = '<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;">' +
-    sevBadge(d, null) +
-    '<strong style="font-family:var(--font-mono,monospace);">' + _esc(d.codigo) + '</strong>' +
+  box.innerHTML = '<div class="linea">' + sevBadge(d, null) +
+    '<span class="cod">' + _esc(d.codigo) + '</span>' +
     '<span>' + _esc(describirCodigo(_selEl, _selTipo).split(' · ')[1] || '') + '</span></div>' +
-    '<div style="font-size:11px;color:var(--muted);margin-top:4px;">' +
+    '<div class="nota">' +
     (disp ? 'Disposición de material — no cuenta como defecto en los indicadores.'
-          : 'Severidad sugerida por ' + (d.sevFuente === 'doc' ? 'criterio del documento' : 'matriz de clasificación') + '. Puedes ajustarla después.') +
+          : 'Severidad sugerida por ' + (d.sevFuente === 'doc' ? 'criterio del documento' : 'la matriz de clasificación') + '. Puedes ajustarla después.') +
     '</div>';
-  ok.disabled = false; ok.style.opacity = '1';
+  ok.disabled = false;
 }
 
 function confirmarSelectorDefecto() {
