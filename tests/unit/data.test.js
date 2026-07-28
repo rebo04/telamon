@@ -3,7 +3,7 @@ import {
   COMPONENTS_DICT,
   COMPONENTS,
   TESTS,
-  FAILURES,
+  FALLAS_LEGADO,
   DEFECT_TYPES,
   DEFECT_CATEGORIES,
 } from '../../src/logic.js';
@@ -84,25 +84,28 @@ describe('TESTS', () => {
   });
 });
 
-describe('FAILURES', () => {
+// El catálogo legado quedó congelado: ya no se captura con él, sólo se usa
+// para releer el historial. Los tests fijan su contenido para que la
+// migración no se rompa en silencio si alguien lo edita.
+describe('FALLAS_LEGADO', () => {
   it('has exactly 10 entries', () => {
-    expect(FAILURES).toHaveLength(10);
+    expect(FALLAS_LEGADO).toHaveLength(10);
   });
 
   it('starts with Terminal no insertada', () => {
-    expect(FAILURES[0]).toBe('Terminal no insertada (Push-back)');
+    expect(FALLAS_LEGADO[0]).toBe('Terminal no insertada (Push-back)');
   });
 
   it('contains Miswire entry', () => {
-    expect(FAILURES).toContain('Cables invertidos (Miswire)');
+    expect(FALLAS_LEGADO).toContain('Cables invertidos (Miswire)');
   });
 
   it('contains Cortocircuito', () => {
-    expect(FAILURES).toContain('Cortocircuito');
+    expect(FALLAS_LEGADO).toContain('Cortocircuito');
   });
 
   it('has no duplicate entries', () => {
-    expect(new Set(FAILURES).size).toBe(FAILURES.length);
+    expect(new Set(FALLAS_LEGADO).size).toBe(FALLAS_LEGADO.length);
   });
 });
 
