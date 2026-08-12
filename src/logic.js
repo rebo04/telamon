@@ -204,6 +204,79 @@ export function checkPartNumberDuplicatesInHistory(partBlocks, records) {
   return null;
 }
 
+// ── IDENTIDAD DE SINCRONIZACIÓN ──────────────────────────────────────────
+
+/**
+ * Identidad estable del registro, generada por el dispositivo que lo captura.
+ *
+ * Es lo que permite reintentar una subida sin duplicar: el documento de
+ * Firestore usa este mismo valor como ID, así que escribirlo dos veces
+ * sobrescribe en vez de crear un gemelo. `id` no sirve para esto — es
+ * Date.now(), y dos iPads capturando en el mismo milisegundo lo repiten.
+ */
+export function nuevoUid() {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+  } catch (e) { /* entorno sin crypto — se usa el respaldo */ }
+  return 'r-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+}
+
+/**
+ * Clave con la que se reconoce un mismo registro entre el snapshot remoto y la
+ * copia local. Los registros anteriores a `uid` sólo tienen `id`.
+ */
+export function syncKey(r) {
+  if (!r) return null;
+  if (r.uid) return 'uid:' + r.uid;
+  if (r.id !== undefined && r.id !== null && r.id !== '') return 'id:' + r.id;
+  return null;
+}
+
+/**
+ * Registros que este dispositivo capturó y que Firestore todavía no confirmó.
+ *
+ * La marca es la ausencia de `_firebaseId`, que sólo se asigna cuando la
+ * escritura fue aceptada. La distinción importa: un registro que sí lo tiene y
+ * ya no aparece en el snapshot fue borrado a propósito desde otro dispositivo,
+ * y resucitarlo sería tan malo como perderlo.
+ */
+export function registrosSinConfirmar(locales) {
+  return (locales || []).filter(r => r && !r._firebaseId && syncKey(r));
+}
+
+/**
+ * Documento de Firestore que hay que borrar para un registro dado.
+ *
+ * Un registro capturado sin red todavía no tiene `_firebaseId`, pero su
+ * escritura ya está encolada bajo su `uid`. Borrar ese mismo documento es lo
+ * que cancela la escritura pendiente: sin esto, la escritura sale al
+ * reconectar y el registro que el inspector borró reaparece solo.
+ */
+export function idDocumentoABorrar(r) {
+  if (!r) return null;
+  return r._firebaseId || r.uid || null;
+}
+
+/**
+ * Mezcla el snapshot de Firestore con lo que este dispositivo aún no ha subido.
+ *
+ * El listener no puede reemplazar la lista a ciegas: si el iPad capturó sin red
+ * y iOS mató la app antes de que la escritura saliera, esos registros viven
+ * sólo aquí. Al llegar el primer snapshot desaparecerían del historial y del
+ * Excel sin dejar rastro de que existieron.
+ */
+export function mergeRegistrosRemotos(remotos, locales) {
+  const rem = remotos || [];
+  const vistos = new Set(rem.map(syncKey).filter(Boolean));
+  const pendientes = registrosSinConfirmar(locales).filter(r => !vistos.has(syncKey(r)));
+  if (pendientes.length === 0) return rem;
+  return [...rem, ...pendientes].sort(
+    (a, b) => String(b.ts || '').localeCompare(String(a.ts || ''))
+  );
+}
+
 // ── RECORD BUILDER ───────────────────────────────────────────────────────
 
 /**
@@ -253,6 +326,7 @@ export function buildRecord(header, partsData, overrides = {}) {
 
   return {
     id: Date.now(),
+    uid: nuevoUid(),
     cell, date, slot, client, tester, inspector,
     fail, solution,
     solved: isSolved,

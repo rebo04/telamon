@@ -27,6 +27,11 @@ async function saveToFirebase(record, win) {
   try {
     if (record._firebaseId) {
       await win._setDoc(win._doc(win._db_ref, win._COL, record._firebaseId), record);
+    } else if (record.uid) {
+      // El documento lleva el uid del registro: reintentar la subida
+      // sobrescribe el mismo documento en vez de crear un duplicado.
+      await win._setDoc(win._doc(win._db_ref, win._COL, record.uid), record);
+      record._firebaseId = record.uid;
     } else {
       const docRef = await win._addDoc(win._col, record);
       record._firebaseId = docRef.id;
@@ -58,6 +63,30 @@ describe('saveToFirebase', () => {
     const record = { id: 1, cell: '215' };
     await saveToFirebase(record, win);
     expect(record._firebaseId).toBe('fb-new-id');
+  });
+
+  it('uses the record uid as the document id (never _addDoc)', async () => {
+    const record = { id: 1, uid: 'u-abc', cell: '215' };
+    await saveToFirebase(record, win);
+    expect(win._doc).toHaveBeenCalledWith(win._db_ref, win._COL, 'u-abc');
+    expect(win._addDoc).not.toHaveBeenCalled();
+    expect(record._firebaseId).toBe('u-abc');
+  });
+
+  it('reintentar la subida no duplica el registro', async () => {
+    // Es el escenario del iPad sin red: la primera escritura falla, la
+    // segunda tiene que caer en el MISMO documento, no crear un gemelo.
+    const record = { id: 1, uid: 'u-retry', cell: '215' };
+    win._setDoc = vi.fn().mockRejectedValueOnce(new Error('offline'))
+                         .mockResolvedValue(undefined);
+
+    await saveToFirebase(record, win);
+    expect(record._firebaseId).toBeUndefined();  // sigue pendiente
+
+    await saveToFirebase(record, win);
+    expect(record._firebaseId).toBe('u-retry');
+    expect(win._addDoc).not.toHaveBeenCalled();
+    expect(win._doc).toHaveBeenCalledWith(win._db_ref, win._COL, 'u-retry');
   });
 
   it('calls _setDoc for an existing record (has _firebaseId)', async () => {

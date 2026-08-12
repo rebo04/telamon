@@ -1301,7 +1301,7 @@ body.role-papoi .papoi-only { display: inline-flex !important; }
 <!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs, getDoc, deleteDoc, doc, setDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, getDocs, getDoc, deleteDoc, doc, setDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDLsOR5IpS57aYGRcuLpzwhoprBmEdCgGM",
@@ -1313,7 +1313,23 @@ body.role-papoi .papoi-only { display: inline-flex !important; }
   };
 
   const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+
+  // Caché persistente en IndexedDB. Sin esto, un registro capturado sin red
+  // vive únicamente en la cola en memoria del SDK: cuando iOS mata la PWA
+  // —y la mata seguido— esa cola se va con ella y el registro nunca sube.
+  // Con la caché persistente la escritura pendiente sobrevive al cierre y
+  // sale sola al recuperar la conexión.
+  let db;
+  try {
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
+  } catch (e) {
+    // Modo privado o almacenamiento bloqueado: la app sigue funcionando, pero
+    // sin durabilidad offline. El reintento de startFirebaseSync la cubre.
+    console.warn('Persistencia offline no disponible, se usa caché en memoria:', e);
+    db = getFirestore(app);
+  }
   const COL = "registros";
 
   // Expose to global scope
@@ -2851,6 +2867,7 @@ function submitForm() {
 
   const record = {
     id: Date.now(),
+    uid: nuevoUid(),
     cell, date, slot, client, tester, fail, solution, inspector,
     solved: isSolved,
     defects: combinedDefects,
@@ -2906,28 +2923,132 @@ function loadRecords() {
   } catch(e) { records = []; }
 }
 
+// <<< SYNC-MERGE espejo de src/logic.js — tests/unit/sync-merge.test.js
+// corre la misma batería contra las dos copias y falla si divergen.
+
+/**
+ * Identidad estable del registro, generada por el dispositivo que lo captura.
+ *
+ * Es lo que permite reintentar una subida sin duplicar: el documento de
+ * Firestore usa este mismo valor como ID, así que escribirlo dos veces
+ * sobrescribe en vez de crear un gemelo. `id` no sirve para esto — es
+ * Date.now(), y dos iPads capturando en el mismo milisegundo lo repiten.
+ */
+function nuevoUid() {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+  } catch (e) { /* entorno sin crypto — se usa el respaldo */ }
+  return 'r-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+}
+
+/**
+ * Clave con la que se reconoce un mismo registro entre el snapshot remoto y la
+ * copia local. Los registros anteriores a `uid` sólo tienen `id`.
+ */
+function syncKey(r) {
+  if (!r) return null;
+  if (r.uid) return 'uid:' + r.uid;
+  if (r.id !== undefined && r.id !== null && r.id !== '') return 'id:' + r.id;
+  return null;
+}
+
+/**
+ * Registros que este dispositivo capturó y que Firestore todavía no confirmó.
+ *
+ * La marca es la ausencia de `_firebaseId`, que sólo se asigna cuando la
+ * escritura fue aceptada. La distinción importa: un registro que sí lo tiene y
+ * ya no aparece en el snapshot fue borrado a propósito desde otro dispositivo,
+ * y resucitarlo sería tan malo como perderlo.
+ */
+function registrosSinConfirmar(locales) {
+  return (locales || []).filter(r => r && !r._firebaseId && syncKey(r));
+}
+
+/**
+ * Documento de Firestore que hay que borrar para un registro dado.
+ *
+ * Un registro capturado sin red todavía no tiene `_firebaseId`, pero su
+ * escritura ya está encolada bajo su `uid`. Borrar ese mismo documento es lo
+ * que cancela la escritura pendiente: sin esto, la escritura sale al
+ * reconectar y el registro que el inspector borró reaparece solo.
+ */
+function idDocumentoABorrar(r) {
+  if (!r) return null;
+  return r._firebaseId || r.uid || null;
+}
+
+/**
+ * Mezcla el snapshot de Firestore con lo que este dispositivo aún no ha subido.
+ *
+ * El listener no puede reemplazar la lista a ciegas: si el iPad capturó sin red
+ * y iOS mató la app antes de que la escritura saliera, esos registros viven
+ * sólo aquí. Al llegar el primer snapshot desaparecerían del historial y del
+ * Excel sin dejar rastro de que existieron.
+ */
+function mergeRegistrosRemotos(remotos, locales) {
+  const rem = remotos || [];
+  const vistos = new Set(rem.map(syncKey).filter(Boolean));
+  const pendientes = registrosSinConfirmar(locales).filter(r => !vistos.has(syncKey(r)));
+  if (pendientes.length === 0) return rem;
+  return [...rem, ...pendientes].sort(
+    (a, b) => String(b.ts || '').localeCompare(String(a.ts || ''))
+  );
+}
+// >>> SYNC-MERGE FIN
+
 // ── FIREBASE SYNC ──
 window.startFirebaseSync = function() {
   if (!window._firebaseReady) return;
   const q = window._query(window._collection(window._db_ref, window._COL), window._orderBy('ts', 'desc'));
   window._onSnapshot(q, (snapshot) => {
-    records = migrarRegistros(snapshot.docs.map(d => ({ ...d.data(), _firebaseId: d.id })));
-    try { localStorage.setItem('tester_records', JSON.stringify(records)); } catch(e) {}
+    const remotos = snapshot.docs.map(d => ({ ...d.data(), _firebaseId: d.id }));
+    // Mezclar, no reemplazar: lo capturado en este iPad que todavía no llega
+    // al servidor tiene que seguir en el historial y en el Excel.
+    records = migrarRegistros(mergeRegistrosRemotos(remotos, records));
+    saveRecords();
     renderHistory();
     if (typeof updatePendingBadge === 'function') updatePendingBadge();
+    reintentarPendientes();
   }, (err) => {
     console.warn('Firebase sync error:', err);
   });
 };
+
+// Registros que quedaron sin subir: capturados sin red, o con una escritura
+// que falló. Se reintentan al llegar cada snapshot y al recuperar la conexión.
+const _subiendo = new Set();
+function reintentarPendientes() {
+  if (!window._firebaseReady) return;
+  registrosSinConfirmar(records).forEach(r => {
+    const k = syncKey(r);
+    if (!k || _subiendo.has(k)) return;
+    _subiendo.add(k);
+    // Sin await a propósito: estando offline la promesa no resuelve hasta
+    // reconectar, y esperarla aquí dejaría a los demás sin reintento.
+    Promise.resolve(saveToFirebase(r))
+      .then(() => saveRecords())
+      .finally(() => _subiendo.delete(k));
+  });
+}
+window.addEventListener('online', reintentarPendientes);
 
 async function saveToFirebase(record) {
   if (!window._firebaseReady) return;
   try {
     if (record._firebaseId) {
       await window._setDoc(window._doc(window._db_ref, window._COL, record._firebaseId), record);
+    } else if (record.uid) {
+      // El documento lleva el uid del registro: reintentar la subida
+      // sobrescribe el mismo documento en vez de crear un duplicado.
+      await window._setDoc(window._doc(window._db_ref, window._COL, record.uid), record);
+      record._firebaseId = record.uid;
+      saveRecords();
     } else {
       const docRef = await window._addDoc(window._col, record);
       record._firebaseId = docRef.id;
+      saveRecords();
     }
   } catch(e) { console.warn('Firebase save error:', e); }
 }
@@ -4293,11 +4414,11 @@ function toggleRecord(idx) {
 }
 function deleteRecord(idx) {
   if (!confirm('¿Eliminar este registro?')) return;
-  const firebaseId = records[idx]._firebaseId;
+  const firebaseId = idDocumentoABorrar(records[idx]);
   records.splice(idx, 1);
   saveRecords();
   if (firebaseId) deleteFromFirebase(firebaseId);
-  else renderHistory();
+  renderHistory();
 }
 
 function toggleOtherClient(val) {
@@ -4880,7 +5001,7 @@ async function rejectNewRecord(recKey) {
   if (!confirm('¿Rechazar y eliminar este registro?')) return;
   const idx = records.findIndex(r => (r._firebaseId||String(r.id)) === recKey);
   if (idx < 0) return;
-  const fbId = records[idx]._firebaseId;
+  const fbId = idDocumentoABorrar(records[idx]);
   records.splice(idx, 1);
   saveRecords();
   if (fbId) await deleteFromFirebase(fbId);
@@ -4912,6 +5033,8 @@ async function approveChange(pendingId, recordId) {
     if (p.type === 'new') {
       const newRec = p.proposed;
       newRec.id = Date.now();
+      // Identidad propia: es un registro nuevo, no el pendiente reescrito.
+      newRec.uid = nuevoUid();
       newRec.ts = new Date().toISOString();
       if (!newRec.changeHistory) newRec.changeHistory = [];
       newRec.changeHistory.unshift({ date: new Date().toLocaleString('es-MX'), action: 'APROBADO', detail: 'Registro de PAPOI aprobado por Admin' });
