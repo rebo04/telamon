@@ -183,8 +183,42 @@ src/defect-code.js      Motor: severidad, migración, búsqueda, agregación
 src/logic.js            Lógica de formulario y registro
 tools/gen-catalog.py    Regenera el catálogo desde el documento controlado
 tools/sync-inline.py    Inyecta el motor dentro de index.html
-tests/unit/             214 pruebas
+tests/unit/             255 pruebas
 ```
+
+### Cómo sobrevive un registro capturado sin red
+
+El iPad guarda en tres lugares y ninguno necesita que haya WiFi en el momento:
+
+1. **`localStorage`** — la lista completa, para que la app abra con datos.
+2. **La caché persistente de Firestore** (IndexedDB) — la cola de escrituras
+   pendientes. Sin ella un registro capturado sin red vive sólo en memoria y se
+   va cuando iOS mata la PWA, que la mata seguido.
+3. **El servidor**, en cuanto vuelve la conexión.
+
+Tres reglas lo sostienen, y las tres tienen prueba en `tests/unit/sync-merge.test.js`:
+
+- **El snapshot se mezcla, no reemplaza.** `mergeRegistrosRemotos` conserva lo
+  que este iPad todavía no ha subido. Antes el listener sobreescribía la lista
+  completa: un turno capturado sin red desaparecía del historial y del Excel al
+  reconectar, sin aviso.
+- **Cada registro trae `uid`** generado en el dispositivo, y ese uid **es** el ID
+  del documento en Firestore. Por eso reintentar una subida sobrescribe en vez
+  de duplicar. `id` no sirve para esto: es `Date.now()`, y dos iPads capturando
+  en el mismo milisegundo lo repiten.
+- **Borrar usa el uid** cuando el registro aún no está confirmado. Si no, la
+  escritura encolada saldría al reconectar y el registro que el inspector borró
+  reaparecería solo.
+
+Lo que decide si un registro está confirmado es `_firebaseId`: se asigna sólo
+cuando el servidor aceptó la escritura. Un registro que lo tiene y ya no está en
+el snapshot fue borrado a propósito desde otro dispositivo — ése **no** se
+resucita. Perder un registro y revivir uno borrado son el mismo error con
+distinto signo.
+
+El motor inline de `index.html` lleva su propia copia de estas cuatro funciones
+(bloque `SYNC-MERGE`). La prueba corre la misma batería contra las dos copias,
+así que no pueden divergir.
 
 ### Por qué el motor está duplicado dentro de index.html
 
@@ -231,8 +265,8 @@ así que los datos viejos siguen siendo interpretables cuando el catálogo avanc
 
 ```bash
 npm install
-npm test              # 214 pruebas
-npm run test:coverage # cobertura (98.7% en src/)
+npm test              # 255 pruebas
+npm run test:coverage # cobertura (98.6% en src/)
 ```
 
 Las pruebas de `tests/unit/tis-f0124.test.js` fijan **reglas de calidad**, no
@@ -252,6 +286,7 @@ service worker tome la versión nueva.
 ```jsonc
 {
   "cell": "215", "date": "2026-07-20", "tester": "T-01",
+  "uid": "5f8c2a1e-...",   // identidad del dispositivo = ID del documento
   "partnum": "667080300A",
   "fail": "TE-32 · Terminal / No Asentado Completamente",
   "severidad": "A",                          // la peor del registro
