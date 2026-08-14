@@ -1301,7 +1301,7 @@ body.role-papoi .papoi-only { display: inline-flex !important; }
 <!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, getDocs, getDoc, deleteDoc, doc, setDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, initializeFirestore, persistentLocalCache, persistentSingleTabManager, collection, addDoc, getDocs, getDoc, deleteDoc, doc, setDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDLsOR5IpS57aYGRcuLpzwhoprBmEdCgGM",
@@ -1319,10 +1319,20 @@ body.role-papoi .papoi-only { display: inline-flex !important; }
   // —y la mata seguido— esa cola se va con ella y el registro nunca sube.
   // Con la caché persistente la escritura pendiente sobrevive al cierre y
   // sale sola al recuperar la conexión.
+  //
+  // Un solo tab a propósito. La app corre como PWA instalada en el teléfono:
+  // siempre es una sola instancia. persistentMultipleTabManager coordina las
+  // pestañas con un candado en IndexedDB que Safari no sostiene bien, y cuando
+  // no lo consigue el fallo llega DESPUÉS de esta línea — el catch de abajo no
+  // puede verlo y el listener se queda sirviendo un caché vacío para siempre.
+  // forceOwnership toma el candado sin negociar, que es lo correcto cuando por
+  // diseño no hay con quién negociar.
   let db;
   try {
     db = initializeFirestore(app, {
-      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+      localCache: persistentLocalCache({
+        tabManager: persistentSingleTabManager({ forceOwnership: true })
+      })
     });
   } catch (e) {
     // Modo privado o almacenamiento bloqueado: la app sigue funcionando, pero
@@ -2911,9 +2921,25 @@ function submitForm() {
 }
 
 // ── STORAGE ──
-function saveRecords() {
-  // localStorage como fallback
-  try { localStorage.setItem('tester_records', JSON.stringify(records)); } catch(e) {}
+/**
+ * Respaldo local del historial.
+ *
+ * Vaciarlo tiene que ser un acto deliberado. Este respaldo es lo único que
+ * queda cuando Firestore todavía no contesta, así que si algo dejó `records`
+ * en cero por error —un snapshot de caché fría, un fallo a medio camino—
+ * sobrescribirlo destruye la última copia que tenía el dispositivo.
+ *
+ * `permitirVacio` lo pasan sólo los dos casos donde el cero es real: el
+ * inspector borró el último registro, o el servidor confirmó que no hay nada.
+ */
+function saveRecords({ permitirVacio = false } = {}) {
+  try {
+    if (records.length === 0 && !permitirVacio) {
+      const raw = localStorage.getItem('tester_records');
+      if (raw && raw !== '[]' && JSON.parse(raw).length > 0) return;
+    }
+    localStorage.setItem('tester_records', JSON.stringify(records));
+  } catch(e) {}
 }
 function loadRecords() {
   // Cargar desde localStorage mientras llega Firebase
@@ -2996,6 +3022,31 @@ function mergeRegistrosRemotos(remotos, locales) {
     (a, b) => String(b.ts || '').localeCompare(String(a.ts || ''))
   );
 }
+
+/**
+ * ¿Este snapshot puede reemplazar el historial?
+ *
+ * Con caché persistente, onSnapshot dispara de inmediato con lo que haya en
+ * IndexedDB, antes de que el servidor conteste. En un dispositivo que apenas
+ * instaló esta versión ese caché está recién creado y vacío, así que el primer
+ * snapshot trae CERO documentos y `fromCache: true`. Aplicarlo vacía el
+ * historial y, peor, el respaldo local: es exactamente lo que dejó los
+ * teléfonos en blanco.
+ *
+ * Un vacío sólo es verdad si lo confirma el servidor. Ojo con la asimetría:
+ * `mergeRegistrosRemotos` protege lo que aún no sube (sin `_firebaseId`), pero
+ * el historial ya sincronizado sí lo tiene, y contra un snapshot vacío no lo
+ * defiende nadie. Esta guarda es la que lo cubre. Ampliar el merge en su lugar
+ * sería el error contrario: resucitaría los registros borrados a propósito.
+ *
+ * Sin metadata se aplica, que es el comportamiento anterior: la guarda apunta
+ * al fallo real, no a inventar desconfianza donde no hay con qué juzgar.
+ */
+function debeAplicarSnapshot(meta, remotos, locales) {
+  if ((remotos || []).length > 0) return true;
+  if (!meta || meta.fromCache !== true) return true;
+  return (locales || []).length === 0;
+}
 // >>> SYNC-MERGE FIN
 
 // ── FIREBASE SYNC ──
@@ -3004,10 +3055,20 @@ window.startFirebaseSync = function() {
   const q = window._query(window._collection(window._db_ref, window._COL), window._orderBy('ts', 'desc'));
   window._onSnapshot(q, (snapshot) => {
     const remotos = snapshot.docs.map(d => ({ ...d.data(), _firebaseId: d.id }));
+    // Un snapshot vacío que viene del caché no es noticia, es un caché frío.
+    // Se ignora y se espera al servidor; el historial y el respaldo se quedan
+    // como están. Sin esta línea el dispositivo se vacía solo al instalar.
+    if (!debeAplicarSnapshot(snapshot.metadata, remotos, records)) {
+      console.warn('[sync] snapshot vacío desde caché ignorado; se espera al servidor');
+      reintentarPendientes();
+      return;
+    }
     // Mezclar, no reemplazar: lo capturado en este iPad que todavía no llega
     // al servidor tiene que seguir en el historial y en el Excel.
     records = migrarRegistros(mergeRegistrosRemotos(remotos, records));
-    saveRecords();
+    // El vacío que llega hasta aquí ya pasó la guarda: o lo confirmó el
+    // servidor, o no había nada local que perder.
+    saveRecords({ permitirVacio: true });
     renderHistory();
     if (typeof updatePendingBadge === 'function') updatePendingBadge();
     reintentarPendientes();
@@ -4416,7 +4477,8 @@ function deleteRecord(idx) {
   if (!confirm('¿Eliminar este registro?')) return;
   const firebaseId = idDocumentoABorrar(records[idx]);
   records.splice(idx, 1);
-  saveRecords();
+  // El inspector lo pidió: si era el último, el respaldo sí queda vacío.
+  saveRecords({ permitirVacio: true });
   if (firebaseId) deleteFromFirebase(firebaseId);
   renderHistory();
 }
@@ -5003,7 +5065,8 @@ async function rejectNewRecord(recKey) {
   if (idx < 0) return;
   const fbId = idDocumentoABorrar(records[idx]);
   records.splice(idx, 1);
-  saveRecords();
+  // Rechazo explícito del admin: si era el último, el respaldo sí queda vacío.
+  saveRecords({ permitirVacio: true });
   if (fbId) await deleteFromFirebase(fbId);
   showToast('Registro rechazado y eliminado');
   updatePendingBadge();

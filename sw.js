@@ -1,8 +1,8 @@
 // Subir esta versión en CADA release que toque index.html.
 // La estrategia es cache-first: si el nombre no cambia, los iPads que ya
 // instalaron la app seguirían sirviendo la versión vieja para siempre.
-// v4 — cachea chart.js y jszip; la instalación ya no falla en silencio
-const CACHE = 'telamon-qc-v4';
+// v5 — el snapshot vacío de caché fría ya no borra el historial (v4 lo hacía)
+const CACHE = 'telamon-qc-v5';
 
 // Sin estos dos no hay app. Si no se pueden guardar, la instalación debe
 // fallar en vez de dejar un PWA a medias que nadie sabe que quedó roto.

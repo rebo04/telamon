@@ -31,7 +31,7 @@ describe('copia inline en index.html', () => {
 const inline = new Function(
   HTML.match(BLOQUE)[0] +
   '\nreturn { nuevoUid, syncKey, registrosSinConfirmar, mergeRegistrosRemotos,' +
-  ' idDocumentoABorrar };'
+  ' idDocumentoABorrar, debeAplicarSnapshot };'
 )();
 
 const IMPLS = [['src/logic.js', src], ['index.html (inline)', inline]];
@@ -162,6 +162,93 @@ IMPLS.forEach(([nombre, api]) => {
       expect(uid).not.toContain('/');
       expect(uid).not.toMatch(/^__.*__$/);
     });
+
+    // ── debeAplicarSnapshot ──────────────────────────────────────────────
+    //
+    // La regresión que dejó los teléfonos en blanco. Con caché persistente el
+    // primer snapshot sale de IndexedDB, y en un dispositivo recién actualizado
+    // ese IndexedDB está vacío.
+
+    const CACHE = { fromCache: true };
+    const SERVIDOR = { fromCache: false };
+    const HISTORIAL = [
+      { uid: 's1', ts: '2026-08-11T07:00:00Z', _firebaseId: 'fb-s1' },
+      { uid: 's2', ts: '2026-08-11T07:30:00Z', _firebaseId: 'fb-s2' },
+    ];
+
+    it('ignora el snapshot vacío de caché fría cuando hay historial local', () => {
+      expect(api.debeAplicarSnapshot(CACHE, [], HISTORIAL)).toBe(false);
+    });
+
+    it('aplica el vacío que confirma el servidor', () => {
+      // Aquí el cero es real: alguien borró todo desde otro dispositivo.
+      expect(api.debeAplicarSnapshot(SERVIDOR, [], HISTORIAL)).toBe(true);
+    });
+
+    it('aplica cualquier snapshot que traiga documentos, venga de donde venga', () => {
+      expect(api.debeAplicarSnapshot(CACHE, HISTORIAL, [])).toBe(true);
+      expect(api.debeAplicarSnapshot(CACHE, HISTORIAL, HISTORIAL)).toBe(true);
+      expect(api.debeAplicarSnapshot(SERVIDOR, HISTORIAL, HISTORIAL)).toBe(true);
+    });
+
+    it('un dispositivo sin nada local no tiene qué proteger', () => {
+      expect(api.debeAplicarSnapshot(CACHE, [], [])).toBe(true);
+    });
+
+    it('sin metadata conserva el comportamiento anterior: aplicar', () => {
+      expect(api.debeAplicarSnapshot(undefined, [], HISTORIAL)).toBe(true);
+      expect(api.debeAplicarSnapshot(null, [], HISTORIAL)).toBe(true);
+      expect(api.debeAplicarSnapshot({}, [], HISTORIAL)).toBe(true);
+    });
+
+    it('tolera remotos/locales ausentes', () => {
+      expect(api.debeAplicarSnapshot(CACHE, null, HISTORIAL)).toBe(false);
+      expect(api.debeAplicarSnapshot(CACHE, null, null)).toBe(true);
+    });
+  });
+});
+
+// ── Escenario de la regresión ──────────────────────────────────────────────
+
+describe('escenario: el teléfono acaba de instalar la versión nueva', () => {
+  // Reproduce la secuencia exacta que vació los teléfonos: la caché de
+  // IndexedDB es nueva, el primer snapshot llega vacío desde ahí, y sólo
+  // después contesta el servidor.
+  const HISTORIAL = [
+    { uid: 's1', ts: '2026-08-11T07:00:00Z', _firebaseId: 'fb-s1' },
+    { uid: 's2', ts: '2026-08-11T07:30:00Z', _firebaseId: 'fb-s2' },
+  ];
+
+  it('el historial sobrevive al snapshot de caché fría', () => {
+    let records = [...HISTORIAL];
+
+    // Snapshot 1: IndexedDB recién creado, cero documentos.
+    if (src.debeAplicarSnapshot({ fromCache: true }, [], records)) {
+      records = src.mergeRegistrosRemotos([], records);
+    }
+    expect(records).toHaveLength(2);   // antes del fix: 0
+
+    // Snapshot 2: contesta el servidor con todo.
+    if (src.debeAplicarSnapshot({ fromCache: false }, HISTORIAL, records)) {
+      records = src.mergeRegistrosRemotos(HISTORIAL, records);
+    }
+    expect(records).toHaveLength(2);
+  });
+
+  it('lo capturado sin red tampoco se pierde en esa secuencia', () => {
+    let records = [...HISTORIAL, { uid: 'o1', ts: '2026-08-11T09:00:00Z' }];
+
+    if (src.debeAplicarSnapshot({ fromCache: true }, [], records)) {
+      records = src.mergeRegistrosRemotos([], records);
+    }
+    expect(records).toHaveLength(3);
+
+    if (src.debeAplicarSnapshot({ fromCache: false }, HISTORIAL, records)) {
+      records = src.mergeRegistrosRemotos(HISTORIAL, records);
+    }
+    // Los 2 del servidor + el pendiente que todavía no sube.
+    expect(records).toHaveLength(3);
+    expect(records.filter(r => !r._firebaseId)).toHaveLength(1);
   });
 });
 

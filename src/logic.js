@@ -277,6 +277,31 @@ export function mergeRegistrosRemotos(remotos, locales) {
   );
 }
 
+/**
+ * ¿Este snapshot puede reemplazar el historial?
+ *
+ * Con caché persistente, onSnapshot dispara de inmediato con lo que haya en
+ * IndexedDB, antes de que el servidor conteste. En un dispositivo que apenas
+ * instaló esta versión ese caché está recién creado y vacío, así que el primer
+ * snapshot trae CERO documentos y `fromCache: true`. Aplicarlo vacía el
+ * historial y, peor, el respaldo local: es exactamente lo que dejó los
+ * teléfonos en blanco.
+ *
+ * Un vacío sólo es verdad si lo confirma el servidor. Ojo con la asimetría:
+ * `mergeRegistrosRemotos` protege lo que aún no sube (sin `_firebaseId`), pero
+ * el historial ya sincronizado sí lo tiene, y contra un snapshot vacío no lo
+ * defiende nadie. Esta guarda es la que lo cubre. Ampliar el merge en su lugar
+ * sería el error contrario: resucitaría los registros borrados a propósito.
+ *
+ * Sin metadata se aplica, que es el comportamiento anterior: la guarda apunta
+ * al fallo real, no a inventar desconfianza donde no hay con qué juzgar.
+ */
+export function debeAplicarSnapshot(meta, remotos, locales) {
+  if ((remotos || []).length > 0) return true;
+  if (!meta || meta.fromCache !== true) return true;
+  return (locales || []).length === 0;
+}
+
 // ── RECORD BUILDER ───────────────────────────────────────────────────────
 
 /**
