@@ -178,12 +178,14 @@ que alguien edita y guarda ese registro.
 
 ```
 index.html              La app completa. PWA de un solo archivo.
+sw.js                   Service worker. HTML por red, librerías por caché.
+firestore.rules         Quién puede leer y escribir la base — copia versionada
 src/tis-f0124.js        Catálogo generado del .xlsx — NO editar a mano
 src/defect-code.js      Motor: severidad, migración, búsqueda, agregación
 src/logic.js            Lógica de formulario y registro
 tools/gen-catalog.py    Regenera el catálogo desde el documento controlado
 tools/sync-inline.py    Inyecta el motor dentro de index.html
-tests/unit/             255 pruebas
+tests/unit/             281 pruebas
 ```
 
 ### Cómo sobrevive un registro capturado sin red
@@ -273,11 +275,48 @@ Las pruebas de `tests/unit/tis-f0124.test.js` fijan **reglas de calidad**, no
 detalles de implementación. Si una falla, alguien cambió cómo se clasifica un
 defecto en piso — revísalo antes de "arreglar" la prueba.
 
+### Quién puede entrar a la base de datos
+
+La app abre una **sesión anónima** de Firebase al arrancar, y las reglas exigen
+`request.auth != null`. El inspector no ve nada de esto: ya se identificó con la
+contraseña de la app y con su nombre en cada registro.
+
+Esa condición es lo único que separa el historial de internet abierto. La apiKey
+va dentro de `index.html`, que está publicado en GitHub Pages — no es un secreto
+y no protege nada.
+
+Las reglas viven en `firestore.rules` y se publican con:
+
+```
+firebase deploy --only firestore:rules
+```
+
+**Nunca pongas una regla con fecha** (`request.time < timestamp.date(...)`). Es
+lo que ofrece el modo prueba de la consola y es una bomba de tiempo: en agosto de
+2026 una de esas venció, Firestore empezó a rechazar todo, y como la app se
+tragaba el error en un `console.warn` el síntoma fue un celular mostrando
+"0 registros" sin ninguna explicación. Los dispositivos que ya tenían respaldo
+local lo disimularon durante días.
+
+Si la base vuelve a rechazar el acceso, ahora la app lo dice en una barra roja
+arriba y reintenta la conexión sola cada 15 segundos.
+
+Requisito en la consola de Firebase: **Authentication → Sign-in method →
+Anonymous** tiene que estar habilitado. Si no lo está, la barra roja lo dice con
+todas sus letras.
+
 ### Publicar
 
-GitHub Pages sirve `main` desde la raíz. Un push a `main` despliega. Después del
-deploy, en el iPad: cerrar la app por completo y volver a abrirla para que el
-service worker tome la versión nueva.
+GitHub Pages sirve `main` desde la raíz. Un push a `main` despliega.
+
+El `index.html` se pide **por red primero**, así que los dispositivos toman la
+versión nueva al abrir la app con conexión — ya no depende de acordarse de subir
+`CACHE` en `sw.js`. Ese número sigue sirviendo para tirar el caché viejo de las
+librerías, y conviene subirlo, pero olvidarlo ya no deja a nadie congelado en una
+versión vieja.
+
+Si un iPad se ve raro después de un deploy: cerrar la app por completo y volver a
+abrirla.
 
 ---
 
