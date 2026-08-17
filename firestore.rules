@@ -1,0 +1,51 @@
+rules_version = '2';
+
+// Reglas de acceso de la base de calidad (proyecto telamon-2e681).
+//
+// Este archivo existe porque la app se cayó sin dejar rastro: las reglas vivían
+// sólo en la consola de Firebase, vencieron, y desde el repo no había forma de
+// ver qué estaba puesto ni desde cuándo. El síntoma fue un teléfono mostrando
+// "0 registros" — un dispositivo nuevo sin respaldo local es el primero que
+// nota que la nube dejó de contestar.
+//
+// Publicar con:  firebase deploy --only firestore:rules
+//
+// NUNCA poner una condición con fecha aquí (`request.time < timestamp.date(...)`).
+// Es lo que ofrece el modo prueba y es una bomba de tiempo: vence un martes
+// cualquiera, a media producción, sin avisar a nadie.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // La app abre una sesión anónima al arrancar (signInAnonymously, en
+    // index.html), así que `request.auth` siempre existe aunque el inspector
+    // nunca escriba un correo.
+    //
+    // Esta condición es lo único que separa la base de internet abierto: la
+    // apiKey viaja dentro del HTML publicado en GitHub Pages, así que "nadie
+    // conoce la URL" no protege nada. Sin `request.auth != null`, cualquiera
+    // puede leer y borrar el historial de calidad de la planta.
+    function conSesion() {
+      return request.auth != null;
+    }
+
+    // Historial de inspección. El ID del documento es el `uid` que genera el
+    // dispositivo, para que reintentar una subida sobrescriba en vez de
+    // duplicar.
+    match /registros/{registroId} {
+      allow read, write: if conSesion();
+    }
+
+    // Cambios propuestos por un inspector que todavía espera aprobación.
+    match /pendientes/{pendienteId} {
+      allow read, write: if conSesion();
+    }
+
+    // Cualquier otra ruta queda cerrada. Si mañana la app usa una colección
+    // nueva, hay que declararla aquí a propósito: es preferible que falle de
+    // forma ruidosa a que se abra sola.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

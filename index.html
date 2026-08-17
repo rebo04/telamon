@@ -1292,6 +1292,25 @@ body.role-papoi .papoi-only { display: inline-flex !important; }
   -webkit-backdrop-filter: blur(8px);
 }
 
+/* ── Estado de la nube ──
+   Un cero en pantalla puede significar "no hay registros" o "no pude leerlos".
+   Para el inspector se ven idénticos, y esa ambigüedad es justo la que dejó un
+   teléfono mostrando el historial vacío sin que nadie supiera por qué. Esta
+   barra existe para que las dos cosas no se vuelvan a confundir. */
+.conn-banner {
+  display: none; align-items: center; justify-content: center; gap: 9px;
+  padding: 10px 16px; font-size: 12.5px; font-weight: 600; line-height: 1.35;
+  color: #fff; background: var(--red); text-align: center;
+}
+.conn-banner.show { display: flex; }
+/* Ámbar: hay conexión, pero algo capturado aquí todavía no sube. */
+.conn-banner.warn { background: #b45309; }
+.conn-banner svg {
+  width: 16px; height: 16px; flex: none;
+  stroke: #fff; fill: none; stroke-width: 2.2;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+
 /* ── Content area spacing (gradient shows around cards) ── */
 .content { padding: 20px; max-width: 900px; margin: 0 auto; }
 
@@ -1301,6 +1320,7 @@ body.role-papoi .papoi-only { display: inline-flex !important; }
 <!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import { getFirestore, initializeFirestore, persistentLocalCache, persistentSingleTabManager, collection, addDoc, getDocs, getDoc, deleteDoc, doc, setDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -1357,11 +1377,51 @@ body.role-papoi .papoi-only { display: inline-flex !important; }
   window._getDocs = getDocs;
   window._getDoc = getDoc;
   window._COL = COL;
-  window._firebaseReady = true;
 
-  // Start real-time listener once Firebase is ready
-  window.addEventListener('load', () => {
-    if (typeof window.startFirebaseSync === 'function') window.startFirebaseSync();
+  // ── Sesión anónima ──
+  //
+  // Las reglas de Firestore exigen `request.auth != null` (ver firestore.rules).
+  // Es lo único que separa el historial de calidad de internet abierto: la
+  // apiKey de arriba viaja en este mismo HTML publicado, así que no protege.
+  //
+  // Anónima a propósito. El inspector ya se identifica con la contraseña de la
+  // app y con su nombre en cada registro; pedirle un segundo login sólo para
+  // satisfacer a Firestore sería fricción en el piso sin seguridad extra.
+  const auth = getAuth(app);
+  window._auth = auth;
+
+  // Arranca el listener cuando ya hay sesión Y el resto del script existe.
+  // Los dos disparadores (sesión lista, página cargada) pueden llegar en
+  // cualquier orden, así que ambos llaman aquí y el que llegue primero se topa
+  // con la guarda; `startFirebaseSync` es idempotente para el que llegue tarde.
+  function arrancarSync() {
+    if (!window._firebaseReady) return;
+    if (typeof window.startFirebaseSync !== 'function') return;
+    window.startFirebaseSync();
+  }
+  window.addEventListener('load', arrancarSync);
+
+  // `_firebaseReady` se levanta SÓLO con la sesión abierta. Antes de eso toda
+  // lectura y escritura sería rechazada por las reglas, y un registro capturado
+  // en esa ventana se daría por subido cuando en realidad se perdió. Mientras
+  // tanto vive en localStorage y `reintentarPendientes` lo sube al conectar.
+  onAuthStateChanged(auth, (user) => {
+    if (!user) return;
+    window._firebaseReady = true;
+    window._authUid = user.uid;
+    if (typeof window.marcarConexion === 'function') window.marcarConexion('ok');
+    arrancarSync();
+  });
+
+  signInAnonymously(auth).catch((e) => {
+    console.error('No se pudo abrir la sesión anónima:', e);
+    // Sin sesión no hay nube. Lo que no puede pasar —y es exactamente lo que
+    // pasó— es que se vea como "0 registros": el inspector tiene que saber que
+    // está mirando la copia local de este dispositivo y no el historial real.
+    const detalle = (e && e.code === 'auth/operation-not-allowed')
+      ? 'Falta habilitar el acceso anónimo en Firebase.'
+      : 'No se pudo iniciar sesión con la nube.';
+    if (typeof window.marcarConexion === 'function') window.marcarConexion('error', detalle);
   });
 </script>
 
@@ -1418,6 +1478,12 @@ body.role-papoi .papoi-only { display: inline-flex !important; }
       Historial
     </button>
   </div>
+</div>
+
+<!-- Estado de la nube. Oculto mientras todo va bien. -->
+<div id="conn-banner" class="conn-banner" role="status" aria-live="polite">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+  <span id="conn-banner-msg"></span>
 </div>
 
 <!-- TABS -->
@@ -3049,9 +3115,83 @@ function debeAplicarSnapshot(meta, remotos, locales) {
 }
 // >>> SYNC-MERGE FIN
 
+// ── ESTADO DE LA NUBE ──
+
+/**
+ * Lo que el inspector ve sobre su conexión con Firestore.
+ *
+ * Esto no es cosmético. Cuando las reglas de Firestore empezaron a rechazar el
+ * acceso, lo único que hacía la app era un `console.warn` que nadie mira desde
+ * un celular: en pantalla quedaba un historial vacío, indistinguible de una
+ * planta que no ha inspeccionado nada. Un fallo de lectura tiene que verse como
+ * un fallo de lectura.
+ *
+ *   'ok'    → hay sesión y el listener está vivo.
+ *   'error' → no hay acceso; lo que se ve es la copia local de ESTE dispositivo
+ *             y puede estar incompleta.
+ */
+let _connEstado = 'ok';
+let _connDetalle = '';
+
+window.marcarConexion = function(estado, detalle) {
+  _connEstado = estado;
+  _connDetalle = detalle || '';
+  pintarConexion();
+};
+
+function pintarConexion() {
+  const el = document.getElementById('conn-banner');
+  if (!el) return;
+  const msg = document.getElementById('conn-banner-msg');
+
+  // Capturas de este dispositivo que Firestore todavía no confirmó. Se avisan
+  // aunque la conexión esté bien: un registro que sólo existe en este teléfono
+  // es un registro que se va con el teléfono.
+  let sinSubir = 0;
+  try { sinSubir = registrosSinConfirmar(records).length; } catch (e) {}
+
+  if (_connEstado === 'error') {
+    el.className = 'conn-banner show';
+    msg.textContent = (_connDetalle ? _connDetalle + ' ' : '')
+      + 'Estás viendo la copia guardada en este dispositivo'
+      + (sinSubir ? ' · ' + sinSubir + ' sin subir' : '')
+      + '. Puede estar incompleta.';
+    return;
+  }
+
+  if (sinSubir > 0) {
+    el.className = 'conn-banner show warn';
+    msg.textContent = sinSubir === 1
+      ? '1 registro todavía no sube a la nube.'
+      : sinSubir + ' registros todavía no suben a la nube.';
+    return;
+  }
+
+  el.className = 'conn-banner';
+}
+
 // ── FIREBASE SYNC ──
+
+// Reintento del listener. onSnapshot no se recupera solo de un error: cuando
+// se cae, se cae para siempre y la app se queda mostrando el respaldo local sin
+// volver a preguntar. Así, cuando el problema se arregla del lado del servidor
+// —reglas corregidas, red que vuelve— la app se reconecta sola en vez de
+// esperar a que alguien piense en recargar la página.
+let _reintentoSync = null;
+function programarReintentoSync() {
+  if (_reintentoSync) return;
+  _reintentoSync = setTimeout(() => {
+    _reintentoSync = null;
+    if (typeof window.startFirebaseSync === 'function') window.startFirebaseSync();
+  }, 15000);
+}
+
 window.startFirebaseSync = function() {
   if (!window._firebaseReady) return;
+  // La sesión anónima y el evento 'load' llaman aquí los dos, en el orden que
+  // toque. Sin esta guarda quedarían dos listeners escribiendo sobre `records`.
+  if (window._syncActivo) return;
+  window._syncActivo = true;
   const q = window._query(window._collection(window._db_ref, window._COL), window._orderBy('ts', 'desc'));
   window._onSnapshot(q, (snapshot) => {
     const remotos = snapshot.docs.map(d => ({ ...d.data(), _firebaseId: d.id }));
@@ -3071,9 +3211,19 @@ window.startFirebaseSync = function() {
     saveRecords({ permitirVacio: true });
     renderHistory();
     if (typeof updatePendingBadge === 'function') updatePendingBadge();
+    marcarConexion('ok');
     reintentarPendientes();
   }, (err) => {
     console.warn('Firebase sync error:', err);
+    // El listener queda muerto: hay que poder volver a crearlo.
+    window._syncActivo = false;
+    // `permission-denied` es el caso que tumbó la app y merece su propio texto:
+    // no es la red del inspector, es la base de datos rechazando el acceso, y
+    // quien lo lea tiene que saber que no se arregla cambiándose de WiFi.
+    marcarConexion('error', (err && err.code === 'permission-denied')
+      ? 'La base de datos rechazó el acceso.'
+      : 'Sin conexión con la nube.');
+    programarReintentoSync();
   });
 };
 
@@ -3090,10 +3240,15 @@ function reintentarPendientes() {
     // reconectar, y esperarla aquí dejaría a los demás sin reintento.
     Promise.resolve(saveToFirebase(r))
       .then(() => saveRecords())
-      .finally(() => _subiendo.delete(k));
+      .finally(() => { _subiendo.delete(k); pintarConexion(); });
   });
+  pintarConexion();
 }
-window.addEventListener('online', reintentarPendientes);
+window.addEventListener('online', () => {
+  reintentarPendientes();
+  // Si el listener se cayó mientras no había red, aquí es donde revive.
+  if (typeof window.startFirebaseSync === 'function') window.startFirebaseSync();
+});
 
 async function saveToFirebase(record) {
   if (!window._firebaseReady) return;
@@ -3111,7 +3266,14 @@ async function saveToFirebase(record) {
       record._firebaseId = docRef.id;
       saveRecords();
     }
-  } catch(e) { console.warn('Firebase save error:', e); }
+    pintarConexion();
+  } catch(e) {
+    console.warn('Firebase save error:', e);
+    // El registro se queda en localStorage sin `_firebaseId`, así que
+    // `reintentarPendientes` lo volverá a intentar solo. Lo que no puede quedar
+    // es el inspector creyendo que ya está a salvo en la nube.
+    pintarConexion();
+  }
 }
 
 async function deleteFromFirebase(firebaseId) {
