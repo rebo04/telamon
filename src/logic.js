@@ -347,7 +347,13 @@ export function buildRecord(header, partsData, overrides = {}) {
     Object.keys(p.defects || {}).forEach(k => { if (p.defects[k]) combinedDefects[k] = true; });
   });
 
-  const isSolved = fail !== 'N/A' && allSolutions.length >= allFails.length && allFails.length > 0;
+  // Un registro sólo puede darse por solucionado si de verdad tuvo algo que
+  // solucionar; `fail` no basta, los defectos de Detección/Operador cuentan.
+  const hayFalla = tieneFalla({
+    fail, defects: combinedDefects, defectCodes: allCodes,
+    defectDetection: allDet, defectOperator: allOp, parts: partsData,
+  });
+  const isSolved = hayFalla && allSolutions.length > 0 && allSolutions.length >= allFails.length;
 
   return {
     id: Date.now(),
@@ -379,18 +385,45 @@ export function buildRecord(header, partsData, overrides = {}) {
 
 // ── STATUS HELPERS ───────────────────────────────────────────────────────
 
+/** ¿Un texto de falla dice algo, o es el relleno 'N/A'? */
+function textoConFalla(v) {
+  return typeof v === 'string' && v.trim() !== '' && v.trim().toLowerCase() !== 'n/a';
+}
+
+/** ¿Este bloque (registro o part number) trae algún defecto anotado? */
+function bloqueConDefecto(b) {
+  if (!b) return false;
+  if (textoConFalla(b.fail)) return true;
+  if (Array.isArray(b.defectCodes)    && b.defectCodes.length    > 0) return true;
+  if (Array.isArray(b.defectDetection) && b.defectDetection.length > 0) return true;
+  if (Array.isArray(b.defectOperator)  && b.defectOperator.length  > 0) return true;
+  // Registros viejos guardaron sólo el mapa crudo de chips.
+  if (b.defects && Object.values(b.defects).some(Boolean)) return true;
+  return false;
+}
+
+/**
+ * ¿El registro tiene alguna falla?
+ *
+ * `fail` NO alcanza: se arma sólo con los códigos TIS-F0124 y el texto libre
+ * de "otra falla" (ver buildRecord), así que un registro cuyos únicos defectos
+ * son de Detección (Tester) o de Operador llegaba con fail='N/A' y el semáforo
+ * lo pintaba PASS. Aquí se miran todas las fuentes, y también las de cada part
+ * number: en un registro multiparte el agregado puede quedarse corto.
+ */
+export function tieneFalla(record) {
+  if (!record) return false;
+  if (bloqueConDefecto(record)) return true;
+  return Array.isArray(record.parts) && record.parts.some(bloqueConDefecto);
+}
+
 /**
  * Derive the display status for a record.
  * Returns 'OK' | 'CON FALLA' | 'SOLUCIONADO'.
  */
 export function getRecordStatus(record) {
-  const hasFail =
-    record.fail &&
-    record.fail.toLowerCase() !== 'n/a' &&
-    record.fail.trim() !== '';
-  if (hasFail && !record.solved) return 'CON FALLA';
-  if (hasFail && record.solved)  return 'SOLUCIONADO';
-  return 'OK';
+  if (!tieneFalla(record)) return 'OK';
+  return record.solved ? 'SOLUCIONADO' : 'CON FALLA';
 }
 
 // ── HISTORY STATS ────────────────────────────────────────────────────────
@@ -406,11 +439,7 @@ export function getRecordStatus(record) {
 export function computeHistoryStats(records) {
   const total = records.reduce((acc, r) => acc + (r.parts ? r.parts.length : 1), 0);
   const withFail = records.reduce((acc, r) => {
-    const hasFail =
-      r.fail &&
-      r.fail.toLowerCase() !== 'n/a' &&
-      r.fail.trim() !== '' &&
-      !r.solved;
+    const hasFail = tieneFalla(r) && !r.solved;
     return acc + ((r.parts ? r.parts.length : 1) * (hasFail ? 1 : 0));
   }, 0);
   // Severidad del registro = la peor de sus defectos. Un registro ya

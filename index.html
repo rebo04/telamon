@@ -726,6 +726,10 @@ body.role-papoi .author-credit { display: none !important; }
 .approval-list { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; max-height: 70vh; overflow-y: auto; }
 .approval-card {
   border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+  /* Sin esto flexbox aplasta las tarjetas para caber en los 70vh de la lista
+     en vez de hacer scroll, y `overflow:hidden` recorta los botones de
+     Aprobar/Rechazar: con varios pendientes el modal queda inservible. */
+  flex: 0 0 auto;
 }
 .approval-card-header {
   background: #fef3c7; padding: 10px 14px;
@@ -2855,6 +2859,45 @@ function getDefectBreakdown(defectsObj) {
   return { detection: det, operator: op };
 }
 
+// ── ¿EL REGISTRO TIENE FALLA? (espejo de src/logic.js — tests/unit/record.test.js)
+// `fail` NO alcanza: se arma sólo con los códigos TIS-F0124 y el texto libre de
+// "otra falla", así que un registro cuyos únicos defectos son de Detección
+// (Tester) o de Operador llegaba con fail='N/A' y el semáforo lo pintaba PASS.
+function textoConFalla(v) {
+  return typeof v === 'string' && v.trim() !== '' && v.trim().toLowerCase() !== 'n/a';
+}
+function bloqueConDefecto(b) {
+  if (!b) return false;
+  if (textoConFalla(b.fail)) return true;
+  if (Array.isArray(b.defectCodes)     && b.defectCodes.length     > 0) return true;
+  if (Array.isArray(b.defectDetection) && b.defectDetection.length > 0) return true;
+  if (Array.isArray(b.defectOperator)  && b.defectOperator.length  > 0) return true;
+  // Registros viejos guardaron sólo el mapa crudo de chips.
+  if (b.defects && Object.values(b.defects).some(Boolean)) return true;
+  return false;
+}
+function tieneFalla(record) {
+  if (!record) return false;
+  if (bloqueConDefecto(record)) return true;
+  return Array.isArray(record.parts) && record.parts.some(bloqueConDefecto);
+}
+
+// Qué mostrar en el renglón rojo de la tarjeta: el texto de falla si lo hay,
+// si no los defectos de Detección/Operador que la hicieron FAIL.
+function resumenFalla(record) {
+  if (!record) return '';
+  if (textoConFalla(record.fail)) return record.fail;
+  const bloques = [record].concat(Array.isArray(record.parts) ? record.parts : []);
+  const etiquetas = [];
+  bloques.forEach(b => {
+    if (!b) return;
+    if (textoConFalla(b.fail)) etiquetas.push(b.fail);
+    (b.defectDetection || []).forEach(d => etiquetas.push(d));
+    (b.defectOperator  || []).forEach(d => etiquetas.push(d));
+  });
+  return [...new Set(etiquetas)].join(', ');
+}
+
 // ── SUBMIT ──
 function submitForm() {
   const cell      = document.getElementById('f-cell').value.trim();
@@ -2939,7 +2982,13 @@ function submitForm() {
     allCodes.push(d);
   }));
 
-  const isSolved = (fail !== 'N/A' && allSolutions.length >= allFails.length && allFails.length > 0);
+  // Un registro sólo puede darse por solucionado si de verdad tuvo algo que
+  // solucionar; `fail` no basta, los defectos de Detección/Operador cuentan.
+  const hayFalla = tieneFalla({
+    fail, defects: combinedDefects, defectCodes: allCodes,
+    defectDetection: allDet, defectOperator: allOp, parts: partsData,
+  });
+  const isSolved = hayFalla && allSolutions.length > 0 && allSolutions.length >= allFails.length;
 
   const record = {
     id: Date.now(),
@@ -3558,10 +3607,8 @@ function exportExcel() {
   };
   const mergeRow = (ri, c0, c1) => ({s:{r:ri,c:c0}, e:{r:ri,c:c1}});
   const getStatus = (r) => {
-    const hf = r.fail && r.fail.toLowerCase() !== 'n/a' && r.fail.trim() !== '';
-    if (hf && !r.solved) return 'FAIL';
-    if (hf &&  r.solved) return 'SOLUCIONADO';
-    return 'PASS';
+    if (!tieneFalla(r)) return 'PASS';
+    return r.solved ? 'SOLUCIONADO' : 'FAIL';
   };
 
   // ════════════════════════════════════════════════════════
@@ -4367,12 +4414,7 @@ function renderHistory() {
 
   // REGISTROS CON FALLA
   const withFail = records.reduce((acc, r) => {
-    const hasFail =
-      r.fail &&
-      r.fail.toLowerCase() !== 'n/a' &&
-      r.fail.trim() !== '' &&
-      !r.solved;
-
+    const hasFail = tieneFalla(r) && !r.solved;
     return acc + ((r.parts ? r.parts.length : 1) * (hasFail ? 1 : 0));
   }, 0);
 
@@ -4462,7 +4504,7 @@ function renderHistory() {
   }
 
   el.innerHTML = records.map((r, idx) => {
-    const hasFail = r.fail && r.fail.toLowerCase() !== 'n/a' && r.fail.trim() !== '';
+    const hasFail = tieneFalla(r);
     const dateStr = new Date(r.date+'T12:00:00').toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'});
 
     let statusPill = '';
@@ -4539,7 +4581,7 @@ function renderHistory() {
             <span class="record-part">${r.partnum}</span>
             <span class="record-date">${dateStr} · ${r.tester}</span>
           </div>
-          ${hasFail ? `<div style="font-size:11px;color:var(--red);font-weight:600;margin-top:5px;">${r.fail}</div>` : ''}
+          ${hasFail ? `<div style="font-size:11px;color:var(--red);font-weight:600;margin-top:5px;">${resumenFalla(r) || 'Con defectos'}</div>` : ''}
         </div>
         ${statusPill}
       </div>
@@ -4905,7 +4947,8 @@ function saveEditModal() {
   const _emOtro = document.getElementById('em-fail-other').value.trim();
   const fail = defectosAString(_emDefectCodes, _emOtro);
   record.fail = fail;
-  record.solved = fail !== 'N/A' && record.solution !== '' && record.solution.toLowerCase() !== 'n/a';
+  // `solved` se calcula más abajo, ya que estén actualizados los defectos:
+  // tieneFalla() también mira Detección/Operador, no sólo `fail`.
 
   // ── TIS-F0124 ──
   const _emCodes = JSON.parse(JSON.stringify(_emDefectCodes));
@@ -4923,6 +4966,8 @@ function saveEditModal() {
   const _bd = getDefectBreakdown(_emDefectState);
   record.defectDetection = _bd.detection;
   record.defectOperator = _bd.operator;
+
+  record.solved = tieneFalla(record) && textoConFalla(record.solution);
 
   // Update components, tests, fail and solution in all part blocks
   if (record.parts && record.parts.length > 0) {
@@ -5279,7 +5324,7 @@ async function approveChange(pendingId, recordId) {
     if (recIdx >= 0) {
       const record = records[recIdx];
       Object.assign(record, p.proposed);
-      record.solved = record.fail !== 'N/A' && record.solution && record.solution.toLowerCase() !== 'n/a';
+      record.solved = tieneFalla(record) && textoConFalla(record.solution);
       if (p.proposed.components) { record.components = p.proposed.components; if(record.parts) record.parts.forEach(pt => pt.components = p.proposed.components); }
       if (p.proposed.tests) { record.tests = p.proposed.tests; if(record.parts) record.parts.forEach(pt => pt.tests = p.proposed.tests); }
       if (!record.changeHistory) record.changeHistory = [];
